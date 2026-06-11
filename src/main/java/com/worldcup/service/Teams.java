@@ -120,5 +120,5 @@ public final class Teams {
 
     /** Mapowanie angielskiej nazwy druzyny (jak w TheSportsDB) na kod ISO flagi. */
     public static final Map<String, String> ENGLISH_TO_CODE = EN_NAMES.entrySet().stream()
-            .collect(java.util.stream.Collectors.toMap(Map.Entry::getValue, e -> CODES.get(e.getKey())));
+            .collect(java.util.stream.Collectors.toMap(e -> e.getValue(), e -> CODES.get(e.getKey())));
 }

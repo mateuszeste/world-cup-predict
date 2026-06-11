@@ -89,7 +89,7 @@ public class MatchController {
     @PutMapping("/matches/{id}")
     public ResponseEntity<MatchView> updatePrediction(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @PathVariable Long id,
+            @PathVariable long id,
             @RequestBody ResultRequest request) {
 
         String username = requireUser(auth);
@@ -159,7 +159,7 @@ public class MatchController {
 
         List<TeamOption> teams = Teams.CODES.entrySet().stream()
                 .map(e -> new TeamOption(e.getValue(), e.getKey()))
-                .sorted(Comparator.comparing(TeamOption::getName))
+                .sorted(Comparator.comparing(t -> t.getName()))
                 .toList();
 
         TournamentState state = tournamentStateRepository.getOrCreate();
@@ -275,7 +275,7 @@ public class MatchController {
     @PostMapping("/admin/matches/{id}/result")
     public ResponseEntity<MatchView> adminSetResult(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @PathVariable Long id,
+            @PathVariable long id,
             @RequestBody ResultRequest request) {
 
         requireAdmin(auth);
@@ -317,7 +317,7 @@ public class MatchController {
     @PostMapping("/admin/matches/{id}/teams")
     public ResponseEntity<MatchView> adminSetTeams(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @PathVariable Long id,
+            @PathVariable long id,
             @RequestBody Map<String, String> body) {
 
         requireAdmin(auth);

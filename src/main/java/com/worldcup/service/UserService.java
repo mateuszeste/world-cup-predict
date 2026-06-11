@@ -52,7 +52,7 @@ public class UserService {
         }
         return repository.findByUsernameIgnoreCase(username.trim())
                 .filter(u -> PasswordHasher.matches(password, u.getPasswordHash()))
-                .map(User::getUsername)
+                .map(u -> u.getUsername())
                 .orElse(null);
     }
 }

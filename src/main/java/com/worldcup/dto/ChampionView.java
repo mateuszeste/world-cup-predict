@@ -21,7 +21,7 @@ public class ChampionView {
         if (actualChampion == null) {
             this.pointsEarned = null;
         } else {
-            this.pointsEarned = actualChampion.equals(pick) ? ScoringService.CHAMPION_POINTS : 0;
+            this.pointsEarned = actualChampion.equals(pick) ? ScoringService.BONUS_POINTS : 0;
         }
     }
 
