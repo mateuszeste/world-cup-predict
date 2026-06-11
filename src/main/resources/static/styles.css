@@ -17,7 +17,7 @@
 body {
     margin: 0;
     font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-    background: radial-gradient(1200px 600px at 50% -10%, #dbeafe 0%, var(--bg) 55%);
+    background: url('/bg.jpg') center/cover no-repeat fixed, var(--bg);
     color: var(--text);
     min-height: 100vh;
 }
@@ -76,9 +76,19 @@ header.app-header {
     text-align: center;
 }
 
-.login-logo {
-    font-size: 44px;
-    line-height: 1;
+.login-emblem {
+    height: 80px;
+    width: auto;
+    object-fit: contain;
+    margin: 0 auto 12px;
+}
+
+.header-emblem {
+    height: 60px;
+    width: auto;
+    object-fit: contain;
+    margin: 10px auto 4px;
+    display: block;
 }
 
 .login-card h1 {

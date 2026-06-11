@@ -704,7 +704,8 @@ function App({ user, onLogout }) {
                     {isAdmin && <span className="admin-chip">🔧 Admin</span>}
                     <button className="btn btn-clear" onClick={onLogout}>Wyloguj</button>
                 </div>
-                <h1>⚽ Mistrzostwa Świata 2026 — Predyktor</h1>
+                <img src="/emblem.png" alt="MŚ 2026 Emblem" className="header-emblem" />
+                <h1>⚽ MŚ 2026 - Typer Cuniados</h1>
                 <p>Faza grupowa: 11–27 czerwca 2026 • {playedCount} / {groupMatches.length} uzupełnionych</p>
             </header>
 
@@ -793,7 +794,7 @@ function Login({ onLogin }) {
         <div className="login-wrap">
             <form className="login-card" onSubmit={submit}>
                 <div className="login-logo">⚽</div>
-                <h1>MŚ 2026 — Predyktor</h1>
+                <h1>MŚ 2026 - Typer Cuniados</h1>
                 <p className="login-sub">
                     {isRegister ? "Załóż konto, aby dołączyć" : "Zaloguj się, aby obstawiać mecze"}
                 </p>
@@ -834,6 +835,7 @@ function WakeScreen() {
     return (
         <div className="login-wrap">
             <div className="login-card wake-card">
+                <img src="/emblem.png" alt="MŚ 2026 Emblem" className="login-emblem" />
                 <div className="wake-spinner" />
                 <h1>⚽ MŚ 2026 - Typer Cuniados</h1>
                 <p className="login-sub">Serwer się uruchamia po dłuższej nieaktywności…</p>
