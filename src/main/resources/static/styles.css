@@ -77,14 +77,14 @@ header.app-header {
 }
 
 .login-emblem {
-    height: 80px;
+    height: 40px;
     width: auto;
     object-fit: contain;
     margin: 0 auto 12px;
 }
 
 .header-emblem {
-    height: 60px;
+    height: 30px;
     width: auto;
     object-fit: contain;
     margin: 10px auto 4px;
@@ -858,6 +858,15 @@ footer a {
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 7px 10px;
+    font-size: 13px;
+    flex: 1;
+}
+
+.admin-team-row input:focus {
+    outline: none;
+    border-color: var(--accent-2);
+}
+px;
     font-size: 13px;
     flex: 1;
 }
