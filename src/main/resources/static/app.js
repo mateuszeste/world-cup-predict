@@ -255,6 +255,132 @@ function Leaderboard() {
     );
 }
 
+// ---- Zakładka Typy (wszystkie typy wszystkich użytkowników) ----
+function PredictionsTab() {
+    const [data, setData] = useState(null);
+    const [filter, setFilter] = useState("matches");
+
+    useEffect(() => {
+        api(`${API}/predictions`).then((res) => {
+            if (res.ok) res.json().then(setData);
+        });
+    }, []);
+
+    if (data === null) return <div className="loading">Ładowanie typów…</div>;
+
+    const { matchPredictions, championPicks, topScorerPicks } = data;
+
+    const groupMatches = matchPredictions.filter((m) => m.phase === "GROUP");
+    const knockoutMatches = matchPredictions.filter((m) => m.phase === "KNOCKOUT");
+
+    return (
+        <div className="predictions-tab">
+            <div className="group-filter">
+                <button className={"chip wide" + (filter === "matches" ? " active" : "")}
+                        onClick={() => setFilter("matches")}>Mecze</button>
+                <button className={"chip wide" + (filter === "champion" ? " active" : "")}
+                        onClick={() => setFilter("champion")}>Mistrz turnieju</button>
+                <button className={"chip wide" + (filter === "scorer" ? " active" : "")}
+                        onClick={() => setFilter("scorer")}>Król strzelców</button>
+            </div>
+
+            {filter === "matches" && (
+                <div className="predictions-matches">
+                    <h2>Faza grupowa</h2>
+                    {groupMatches.length === 0 && <p className="no-data">Brak typów na mecze grupowe.</p>}
+                    {groupMatches.map((m) => (
+                        <PredictionMatchCard key={m.matchId} match={m} />
+                    ))}
+                    <h2>Faza pucharowa</h2>
+                    {knockoutMatches.length === 0 && <p className="no-data">Brak typów na mecze pucharowe.</p>}
+                    {knockoutMatches.map((m) => (
+                        <PredictionMatchCard key={m.matchId} match={m} />
+                    ))}
+                </div>
+            )}
+
+            {filter === "champion" && (
+                <div className="predictions-special">
+                    <h2>🏆 Typy na mistrza turnieju</h2>
+                    {championPicks.length === 0 && <p className="no-data">Nikt jeszcze nie typował mistrza.</p>}
+                    <div className="predictions-grid">
+                        {championPicks.map((p, i) => (
+                            <div key={i} className="prediction-chip">
+                                <span className="pred-user">{p.username}</span>
+                                <span className="pred-value">
+                                    <img className="flag flag-sm" src={flagUrl(p.teamCode)} alt={p.teamName} />
+                                    {p.teamName}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {filter === "scorer" && (
+                <div className="predictions-special">
+                    <h2>⚽ Typy na króla strzelców</h2>
+                    {topScorerPicks.length === 0 && <p className="no-data">Nikt jeszcze nie typował króla strzelców.</p>}
+                    <div className="predictions-grid">
+                        {topScorerPicks.map((p, i) => (
+                            <div key={i} className="prediction-chip">
+                                <span className="pred-user">{p.username}</span>
+                                <span className="pred-value">{p.playerName}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function PredictionMatchCard({ match }) {
+    const t = kickoffInfo(match.kickoffUtc, match.date);
+    const hasActual = match.actualScore1 != null && match.actualScore2 != null;
+    const locked = new Date() >= new Date(match.kickoffUtc);
+    const stageLabel = match.phase === "KNOCKOUT"
+        ? (STAGE_LABELS[match.groupName] || match.groupName)
+        : `Gr. ${match.groupName}`;
+
+    return (
+        <div className={"prediction-match-card" + (locked ? " locked" : "")}>
+            <div className="pred-match-header">
+                <span className="pred-stage">{stageLabel}</span>
+                <span className="pred-kickoff">🕑 {t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                {hasActual && (
+                    <span className="pred-actual">
+                        {match.actualScore1}:{match.actualScore2}
+                    </span>
+                )}
+            </div>
+            <div className="pred-match-teams">
+                <div className="pred-team">
+                    <img className="flag" src={flagUrl(match.team1Code)} alt={match.team1Name} />
+                    <span>{match.team1Name}</span>
+                </div>
+                <span className="pred-vs">vs</span>
+                <div className="pred-team">
+                    <img className="flag" src={flagUrl(match.team2Code)} alt={match.team2Name} />
+                    <span>{match.team2Name}</span>
+                </div>
+            </div>
+            <div className="pred-picks">
+                {match.picks.length === 0 && <span className="no-picks">Brak typów</span>}
+                {match.picks.map((p, i) => (
+                    <span key={i} className="pred-pick-chip">
+                        <span className="pred-pick-user">{p.username}:</span>
+                        {p.htScore1 != null && p.htScore2 != null
+                            ? <span className="pred-pick-score">{p.htScore1}:{p.htScore2} (PT) </span>
+                            : null}
+                        <span className="pred-pick-score">{p.score1 ?? "?"}:{p.score2 ?? "?"}</span>
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 // ---- Typ na mistrza turnieju ----
 function ChampionPicker() {
     const [data, setData] = useState(null);
@@ -404,8 +530,6 @@ function KnockoutStage({ matches, onSaved }) {
 
     return (
         <div className="knockout">
-            <ChampionPicker />
-            <TopScorerPicker />
             {byStage.map(([stage, stageMatches]) => (
                 <div className="knockout-section" key={stage}>
                     <h2>{STAGE_LABELS[stage] || stage}</h2>
@@ -715,6 +839,8 @@ function App({ user, onLogout }) {
                             onClick={() => setTab("matches")}>⚽ Faza grupowa</button>
                     <button className={"chip wide" + (tab === "knockout" ? " active" : "")}
                             onClick={() => setTab("knockout")}>🏁 Faza pucharowa</button>
+                    <button className={"chip wide" + (tab === "predictions" ? " active" : "")}
+                            onClick={() => setTab("predictions")}>📋 Typy</button>
                     <button className={"chip wide" + (tab === "leaderboard" ? " active" : "")}
                             onClick={() => setTab("leaderboard")}>🏆 Ranking</button>
                     {isAdmin && (
@@ -727,10 +853,14 @@ function App({ user, onLogout }) {
                     <Leaderboard />
                 ) : tab === "knockout" ? (
                     <KnockoutStage matches={matches} onSaved={loadAll} />
+                ) : tab === "predictions" ? (
+                    <PredictionsTab />
                 ) : tab === "admin" && isAdmin ? (
                     <AdminPanel matches={matches} onSaved={loadAll} />
                 ) : (
                     <React.Fragment>
+                        <ChampionPicker />
+                        <TopScorerPicker />
                         <div className="group-filter">
                             <button className={"chip wide" + (groupFilter === "ALL" ? " active" : "")}
                                     onClick={() => setGroupFilter("ALL")}>Wszystkie</button>

@@ -1,5 +1,6 @@
 package com.worldcup.controller;
 
+import com.worldcup.dto.AllPredictionsView;
 import com.worldcup.dto.ChampionRequest;
 import com.worldcup.dto.ChampionView;
 import com.worldcup.dto.LeaderboardEntry;
@@ -144,6 +145,99 @@ public class MatchController {
         return userRepository.findAllByOrderByPointsDescUsernameAsc().stream()
                 .map(LeaderboardEntry::new)
                 .toList();
+    }
+
+    // ============================================================
+    // WSZYSTKIE TYPY (zakładka Typy)
+    // ============================================================
+
+    /** Wszystkie typy wszystkich użytkowników: mecze, mistrz, król strzelców. */
+    @GetMapping("/predictions")
+    public AllPredictionsView getAllPredictions(@RequestHeader(value = "Authorization", required = false) String auth) {
+        String currentUsername = requireUser(auth);
+
+        List<Match> allMatches = matchRepository.findAllByOrderByKickoffUtcAscIdAsc();
+        List<User> allUsers = userRepository.findAllByOrderByPointsDescUsernameAsc();
+
+        // Mapa: matchId -> lista predykcji
+        Map<Long, List<Prediction>> predictionsByMatch = new HashMap<>();
+        for (Prediction p : predictionRepository.findAll()) {
+            predictionsByMatch.computeIfAbsent(p.getMatchId(), k -> new java.util.ArrayList<>()).add(p);
+        }
+
+        // Mapa: username -> User (szybki lookup)
+        Map<String, User> userMap = new HashMap<>();
+        for (User u : allUsers) {
+            userMap.put(u.getUsername(), u);
+        }
+
+        java.time.Instant now = java.time.Instant.now();
+
+        List<AllPredictionsView.MatchPredictionEntry> matchPredictions = allMatches.stream()
+                .filter(m -> !"TEST".equals(m.getGroupName()))
+                .map(m -> {
+                    boolean isLocked = false;
+                    try {
+                        java.time.Instant kickoff = java.time.Instant.parse(m.getKickoffUtc());
+                        isLocked = !now.isBefore(kickoff);
+                    } catch (Exception e) {
+                        isLocked = true;
+                    }
+                    final boolean locked = isLocked;
+
+                    List<Prediction> preds = predictionsByMatch.getOrDefault(m.getId(), List.of());
+                    List<AllPredictionsView.UserPick> picks = preds.stream()
+                            .map(p -> {
+                                boolean show = locked || p.getUsername().equals(currentUsername);
+                                return new AllPredictionsView.UserPick(
+                                        p.getUsername(),
+                                        show ? p.getHtScore1() : null,
+                                        show ? p.getHtScore2() : null,
+                                        show ? p.getScore1() : null,
+                                        show ? p.getScore2() : null);
+                            })
+                            .toList();
+                    return new AllPredictionsView.MatchPredictionEntry(
+                            m.getId(), m.getTeam1Name(), m.getTeam2Name(),
+                            m.getTeam1Code(), m.getTeam2Code(), m.getDate(),
+                            m.getKickoffUtc(), m.getGroupName(), m.getPhase(),
+                            m.getActualScore1(), m.getActualScore2(), picks);
+                })
+                .toList();
+
+        java.time.Instant tournamentStart = allMatches.stream()
+                .filter(m -> !"TEST".equals(m.getGroupName()))
+                .map(m -> {
+                    try { return java.time.Instant.parse(m.getKickoffUtc()); }
+                    catch (Exception e) { return java.time.Instant.MAX; }
+                })
+                .min(java.time.Instant::compareTo)
+                .orElse(java.time.Instant.MAX);
+        boolean tournamentLocked = !now.isBefore(tournamentStart);
+
+        List<AllPredictionsView.ChampionPickEntry> championPicks = allUsers.stream()
+                .filter(u -> u.getChampionPick() != null)
+                .map(u -> {
+                    boolean show = tournamentLocked || u.getUsername().equals(currentUsername);
+                    String code = show ? u.getChampionPick() : "HIDDEN";
+                    String name = show ? Teams.CODES.entrySet().stream()
+                            .filter(e -> e.getValue().equals(code))
+                            .map(Map.Entry::getKey)
+                            .findFirst().orElse(code) : "???";
+                    return new AllPredictionsView.ChampionPickEntry(u.getUsername(), code, name);
+                })
+                .toList();
+
+        List<AllPredictionsView.TopScorerPickEntry> topScorerPicks = allUsers.stream()
+                .filter(u -> u.getTopScorerPick() != null && !u.getTopScorerPick().isEmpty())
+                .map(u -> {
+                    boolean show = tournamentLocked || u.getUsername().equals(currentUsername);
+                    String playerName = show ? u.getTopScorerPick() : "???";
+                    return new AllPredictionsView.TopScorerPickEntry(u.getUsername(), playerName);
+                })
+                .toList();
+
+        return new AllPredictionsView(matchPredictions, championPicks, topScorerPicks);
     }
 
     // ============================================================

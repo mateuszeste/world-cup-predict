@@ -12,7 +12,7 @@ services:
       - key: H2_CONSOLE_ENABLED
         value: "false"
       # Baza danych: Supabase Postgres (przez connection pooler - IPv4, dziala na Renderze).
-      # DB_URL np.: jdbc:postgresql://aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require
+      # DB_URL np.: jdbc:postgresql://aws-1-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require
       - key: DB_URL
         sync: false
       - key: DB_DRIVER

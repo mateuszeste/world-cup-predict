@@ -866,12 +866,155 @@ footer a {
     outline: none;
     border-color: var(--accent-2);
 }
-px;
-    font-size: 13px;
-    flex: 1;
+
+/* Zakładka Typy */
+.predictions-tab {
+    margin-bottom: 22px;
 }
 
-.admin-team-row input:focus {
-    outline: none;
-    border-color: var(--accent-2);
+.predictions-matches h2 {
+    margin: 0 0 12px;
+    font-size: 18px;
+    color: var(--gold);
+    padding-left: 4px;
+}
+
+.predictions-special h2 {
+    margin: 0 0 16px;
+    font-size: 18px;
+    color: var(--gold);
+}
+
+.no-data {
+    color: var(--muted);
+    font-size: 14px;
+    padding: 12px 0;
+}
+
+.prediction-match-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+}
+
+.prediction-match-card.locked {
+    opacity: .8;
+}
+
+.pred-match-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.pred-stage {
+    color: var(--accent-2);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pred-kickoff {
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+}
+
+.pred-actual {
+    margin-left: auto;
+    color: var(--accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.pred-match-teams {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+
+.pred-team {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.pred-vs {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pred-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.no-picks {
+    color: var(--muted);
+    font-size: 13px;
+    font-style: italic;
+}
+
+.pred-pick-chip {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 13px;
+}
+
+.pred-pick-user {
+    font-weight: 700;
+    color: var(--accent-2);
+    margin-right: 6px;
+}
+
+.pred-pick-score {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.predictions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.prediction-chip {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pred-user {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent-2);
+}
+
+.pred-value {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.flag-sm {
+    width: 24px;
+    height: 16px;
 }
