@@ -747,9 +747,7 @@ function App({ user, onLogout }) {
             </div>
 
             <footer>
-                Terminarz wg oficjalnego losowania (5.12.2025) •
-                Flagi: <a href="https://flagcdn.com" target="_blank">flagcdn.com</a> •
-                Spring Boot + React
+                W pociągu jest tłok, w tramwaju jest tłok, kibice na Orła jadą!
             </footer>
         </div>
     );
@@ -837,7 +835,7 @@ function WakeScreen() {
         <div className="login-wrap">
             <div className="login-card wake-card">
                 <div className="wake-spinner" />
-                <h1>⚽ MŚ 2026 — Predyktor</h1>
+                <h1>⚽ MŚ 2026 - Typer Cuniados</h1>
                 <p className="login-sub">Serwer się uruchamia po dłuższej nieaktywności…</p>
                 <p className="wake-sub">To może potrwać do minuty. Strona załaduje się sama.</p>
             </div>
