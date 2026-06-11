@@ -1,0 +1,17 @@
+# Maven
+target/
+
+# Baza H2 (dane lokalne)
+data/
+
+# Pliki tymczasowe / sekrety lokalne
+token.txt
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
