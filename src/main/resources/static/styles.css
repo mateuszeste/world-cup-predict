@@ -77,14 +77,14 @@ header.app-header {
 }
 
 .login-emblem {
-    height: 40px;
+    height: 80px;
     width: auto;
     object-fit: contain;
     margin: 0 auto 12px;
 }
 
 .header-emblem {
-    height: 30px;
+    height: 60px;
     width: auto;
     object-fit: contain;
     margin: 10px auto 4px;
