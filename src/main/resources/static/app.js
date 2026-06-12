@@ -701,6 +701,14 @@ function AdminPanel({ matches, onSaved }) {
         onSaved();
     }
 
+    async function forceRecalculate() {
+        if (!window.confirm("Przeliczyć wszystkie punkty od zera? To naprawi wszelkie rozbieżności.")) return;
+        setRefreshing(true);
+        await api(`${API}/admin/recalculate`, { method: "POST" });
+        setRefreshing(false);
+        onSaved();
+    }
+
     const adminMatches = useMemo(() => {
         const now = new Date();
         return matches
@@ -718,6 +726,14 @@ function AdminPanel({ matches, onSaved }) {
                     </button>
                     <span style={{marginLeft:"10px", fontSize:"13px", color:"var(--muted)"}}>
                         Normalnie odświeżane co 5 min automatycznie.
+                    </span>
+                </div>
+                <div style={{padding:"0 18px 12px"}}>
+                    <button className="btn btn-clear" disabled={refreshing} onClick={forceRecalculate}>
+                        {refreshing ? "Przeliczanie…" : "🔄 Przelicz wszystkie punkty od zera"}
+                    </button>
+                    <span style={{marginLeft:"10px", fontSize:"13px", color:"var(--muted)"}}>
+                        Naprawia rozbieżności między zakładkami.
                     </span>
                 </div>
             </div>

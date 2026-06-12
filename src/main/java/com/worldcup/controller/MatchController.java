@@ -377,14 +377,15 @@ public class MatchController {
         Match match = matchRepository.findById(id).orElse(null);
         if (match == null) return ResponseEntity.notFound().build();
 
+        // Odejmij stare punkty jesli mecz mial juz wynik
+        resultFetchService.retractPointsForMatch(match);
+
         if (request.getScore1() != null && request.getScore2() != null) {
             match.setActualScore1(Math.max(0, request.getScore1()));
             match.setActualScore2(Math.max(0, request.getScore2()));
         } else {
-            // Wyczyszczenie wyniku – punkty cofniete sa przez recalc przy nastepnym award
             match.setActualScore1(null);
             match.setActualScore2(null);
-            match.setPointsAwarded(false);
         }
 
         if (request.getHtScore1() != null && request.getHtScore2() != null) {
@@ -395,9 +396,10 @@ public class MatchController {
             match.setActualHtScore2(null);
         }
 
+        match.setPointsAwarded(false);
         matchRepository.save(match);
 
-        // Natychmiastowe przyznanie punktow
+        // Natychmiastowe przyznanie nowych punktow
         resultFetchService.awardPendingPoints();
 
         return ResponseEntity.ok(new MatchView(match, null));
@@ -464,6 +466,17 @@ public class MatchController {
             tournamentStateRepository.save(state);
         }
 
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Admin: przelicz WSZYSTKIE punkty od zera. Naprawia rozbieznosci.
+     */
+    @PostMapping("/admin/recalculate")
+    public ResponseEntity<Void> recalculatePoints(
+            @RequestHeader(value = "Authorization", required = false) String auth) {
+        requireAdmin(auth);
+        resultFetchService.recalculateAllPoints();
         return ResponseEntity.noContent().build();
     }
 

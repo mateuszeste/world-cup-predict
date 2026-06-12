@@ -169,6 +169,84 @@ public class ResultFetchService {
     }
 
     /**
+     * Odejmuje punkty za dany mecz od wszystkich uzytkownikow.
+     * Uzywane przed zmiana wyniku, aby uniknac podwojnego naliczania.
+     */
+    public void retractPointsForMatch(Match match) {
+        if (!match.isPointsAwarded()) return;
+        if (match.getActualScore1() == null || match.getActualScore2() == null) return;
+        for (Prediction p : predictionRepository.findByMatchId(match.getId())) {
+            if (p.getScore1() == null || p.getScore2() == null) continue;
+            int pts = ScoringService.points(
+                    p.getHtScore1(), p.getHtScore2(),
+                    p.getScore1(), p.getScore2(),
+                    match.getActualHtScore1(), match.getActualHtScore2(),
+                    match.getActualScore1(), match.getActualScore2());
+            if (pts > 0) {
+                userRepository.findByUsernameIgnoreCase(p.getUsername()).ifPresent(user -> {
+                    user.setPoints(Math.max(0, user.getPoints() - pts));
+                    userRepository.save(user);
+                });
+            }
+        }
+    }
+
+    /**
+     * Przelicza WSZYSTKIE punkty od zera. Naprawia wszelkie rozbieznosci
+     * miedzy MatchView.pointsEarned a user.points w bazie.
+     */
+    public void recalculateAllPoints() {
+        for (User user : userRepository.findAll()) {
+            user.setPoints(0);
+            userRepository.save(user);
+        }
+
+        for (Match match : matchRepository.findAll()) {
+            if ("TEST".equals(match.getGroupName())) continue;
+            if (match.getActualScore1() == null || match.getActualScore2() == null) continue;
+
+            for (Prediction p : predictionRepository.findByMatchId(match.getId())) {
+                if (p.getScore1() == null || p.getScore2() == null) continue;
+                int pts = ScoringService.points(
+                        p.getHtScore1(), p.getHtScore2(),
+                        p.getScore1(), p.getScore2(),
+                        match.getActualHtScore1(), match.getActualHtScore2(),
+                        match.getActualScore1(), match.getActualScore2());
+                if (pts > 0) {
+                    userRepository.findByUsernameIgnoreCase(p.getUsername()).ifPresent(user -> {
+                        user.setPoints(user.getPoints() + pts);
+                        userRepository.save(user);
+                    });
+                }
+            }
+            match.setPointsAwarded(true);
+            matchRepository.save(match);
+        }
+
+        TournamentState state = tournamentStateRepository.getOrCreate();
+        if (state.getChampionCode() != null) {
+            for (User user : userRepository.findAll()) {
+                if (state.getChampionCode().equals(user.getChampionPick())) {
+                    user.setPoints(user.getPoints() + ScoringService.BONUS_POINTS);
+                    userRepository.save(user);
+                }
+            }
+            state.setChampionPointsAwarded(true);
+            tournamentStateRepository.save(state);
+        }
+        if (state.getTopScorerName() != null && !state.getTopScorerName().isEmpty()) {
+            for (User user : userRepository.findAll()) {
+                if (state.getTopScorerName().equalsIgnoreCase(user.getTopScorerPick())) {
+                    user.setPoints(user.getPoints() + ScoringService.BONUS_POINTS);
+                    userRepository.save(user);
+                }
+            }
+            state.setTopScorerPointsAwarded(true);
+            tournamentStateRepository.save(state);
+        }
+    }
+
+    /**
      * Po zakonczeniu finalu MS 2026 ustala zwyciezce z TheSportsDB i jednorazowo
      * dolicza {@value ScoringService#BONUS_POINTS} pkt uzytkownikom, ktorzy trafili.
      */
