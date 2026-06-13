@@ -449,22 +449,30 @@ public class MatchController {
         if (name.isEmpty()) return ResponseEntity.badRequest().build();
 
         TournamentState state = tournamentStateRepository.getOrCreate();
-        if (!state.isTopScorerPointsAwarded()) {
-            state.setTopScorerName(name);
-            // Przyznaj punkty wszystkim, ktorzy trafili
+
+        // Cofnij stare bonusy jesli krol strzelcow byl juz ustawiony
+        if (state.isTopScorerPointsAwarded() && state.getTopScorerName() != null) {
+            String oldName = state.getTopScorerName();
             for (User user : userRepository.findAll()) {
-                if (name.equalsIgnoreCase(user.getTopScorerPick())) {
-                    user.setPoints(user.getPoints() + com.worldcup.service.ScoringService.BONUS_POINTS);
+                if (oldName.equalsIgnoreCase(user.getTopScorerPick())) {
+                    user.setPoints(Math.max(0, user.getPoints() - com.worldcup.service.ScoringService.BONUS_POINTS));
                     userRepository.save(user);
                 }
             }
-            state.setTopScorerPointsAwarded(true);
-            tournamentStateRepository.save(state);
-        } else {
-            // Tylko aktualizuj nazwe bez ponownego przyznawania punktow
-            state.setTopScorerName(name);
-            tournamentStateRepository.save(state);
         }
+
+        state.setTopScorerName(name);
+        state.setTopScorerPointsAwarded(false);
+
+        // Przyznaj nowe bonusy
+        for (User user : userRepository.findAll()) {
+            if (name.equalsIgnoreCase(user.getTopScorerPick())) {
+                user.setPoints(user.getPoints() + com.worldcup.service.ScoringService.BONUS_POINTS);
+                userRepository.save(user);
+            }
+        }
+        state.setTopScorerPointsAwarded(true);
+        tournamentStateRepository.save(state);
 
         return ResponseEntity.noContent().build();
     }

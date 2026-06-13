@@ -224,7 +224,10 @@ public class DataSeeder implements CommandLineRunner {
                           String home, String away, boolean prevDaySlate) {
         LocalDateTime ldt = LocalDateTime.parse(etDateTime);
         String kickoffUtc = ldt.atZone(ZoneId.of("America/New_York")).toInstant().toString();
-        LocalDate slate = prevDaySlate ? ldt.toLocalDate().minusDays(1) : ldt.toLocalDate();
+        LocalDate slate = prevDaySlate
+                ? ldt.atZone(ZoneId.of("America/New_York")).toInstant()
+                        .atZone(ZoneId.of("UTC")).toLocalDate()
+                : ldt.toLocalDate();
         list.add(new Match(group, "GROUP", slate.toString(), kickoffUtc,
                 home, code(home), enName(home),
                 away, code(away), enName(away)));

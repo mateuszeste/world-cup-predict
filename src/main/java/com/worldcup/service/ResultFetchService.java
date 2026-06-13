@@ -43,16 +43,19 @@ public class ResultFetchService {
     private final UserRepository userRepository;
     private final TournamentStateRepository tournamentStateRepository;
     private final RestClient restClient;
+    private final ApiFootballClient apiFootballClient;
 
     public ResultFetchService(MatchRepository matchRepository,
                                PredictionRepository predictionRepository,
                                UserRepository userRepository,
-                               TournamentStateRepository tournamentStateRepository) {
+                               TournamentStateRepository tournamentStateRepository,
+                               ApiFootballClient apiFootballClient) {
         this.matchRepository = matchRepository;
         this.predictionRepository = predictionRepository;
         this.userRepository = userRepository;
         this.tournamentStateRepository = tournamentStateRepository;
         this.restClient = RestClient.create(API_BASE);
+        this.apiFootballClient = apiFootballClient;
     }
 
     /** Co 5 minut: pobiera wyniki zakonczonych meczow, przyznaje punkty i sprawdza mistrza. */
@@ -123,8 +126,19 @@ public class ResultFetchService {
         }
     }
 
-    /** Szuka wyniku meczu w TheSportsDB po angielskich nazwach druzyn i dacie. */
+    /** Szuka wyniku meczu: najpierw TheSportsDB, potem API-Football jako fallback. */
     private int[] fetchResult(Match match) {
+        int[] result = fetchFromTheSportsDB(match);
+        if (result != null) return result;
+
+        result = apiFootballClient.fetchResult(match.getTeam1En(), match.getTeam2En(), match.getDate());
+        if (result != null) {
+            log.info("Pobrano wynik z Sofascore: {} - {}", match.getTeam1En(), match.getTeam2En());
+        }
+        return result;
+    }
+
+    private int[] fetchFromTheSportsDB(Match match) {
         try {
             String query = match.getTeam1En().replace(" ", "_")
                     + "_vs_"
@@ -145,7 +159,6 @@ public class ResultFetchService {
                 int ftHome = Integer.parseInt(event.intHomeScore());
                 int ftAway = Integer.parseInt(event.intAwayScore());
 
-                // TheSportsDB moze zwrocic wynik HT w intScore1Half / intScore2Half
                 if (event.intScore1Half() != null && event.intScore2Half() != null
                         && !event.intScore1Half().isBlank() && !event.intScore2Half().isBlank()) {
                     return new int[]{ftHome, ftAway,
@@ -155,7 +168,7 @@ public class ResultFetchService {
                 return new int[]{ftHome, ftAway};
             }
         } catch (Exception e) {
-            log.warn("Nie udalo sie pobrac wyniku dla {} - {}: {}",
+            log.warn("Nie udalo sie pobrac wyniku z TheSportsDB dla {} - {}: {}",
                     match.getTeam1En(), match.getTeam2En(), e.getMessage());
         }
         return null;
