@@ -138,31 +138,7 @@ function MatchRow({ match, onSaved, showGroup = true }) {
             <div className="match-group">
                 <span className="kick">🕑 {t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
                 {isLive(match) && (
-                    <span className="live-badge"><span className="live-dot" />LIVE</span>
-                )}
-                {showGroup && match.phase === "GROUP" && (
-                    <React.Fragment>
-                        <span className="dot">·</span>
-                        <span className="grp">Gr.&nbsp;{match.groupName}</span>
-                    </React.Fragment>
-                )}
-                <span className="dot">·</span>
-                <span className="et">{t.et}&nbsp;ET</span>
-                {hasActual && (
-                    <React.Fragment>
-                        <span className="dot">·</span>
-                        <span className="actual-result">
-                            {match.actualHtScore1 != null
-                                ? `PT ${match.actualHtScore1}:${match.actualHtScore2} · FT `
-                                : "FT "}
-                            {match.actualScore1}:{match.actualScore2}
-                        </span>
-                    </React.Fragment>
-                )}
-                {match.pointsEarned != null && (
-                    <span className={"points-badge" + (match.pointsEarned > 0 ? " hit" : "")}>
-                        {match.pointsEarned > 0 ? `+${match.pointsEarned} pkt` : "0 pkt"}
-                    </span>
+                    <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
             </div>
 
@@ -360,7 +336,7 @@ function PredictionMatchCard({ match }) {
                 <span className="pred-stage">{stageLabel}</span>
                 <span className="pred-kickoff">🕑 {t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
                 {isLive(match) && (
-                    <span className="live-badge"><span className="live-dot" />LIVE</span>
+                    <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
                 {hasActual && (
                     <span className="pred-actual">
@@ -626,7 +602,7 @@ function AdminMatchRow({ match, isExpanded, isEditingTeams, onToggle, onToggleTe
                 <span className="admin-stage">{stageLabel}</span>
                 <span className="admin-kickoff">{t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
                 {isLive(match) && (
-                    <span className="live-badge"><span className="live-dot" />LIVE</span>
+                    <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
                 <span className="admin-teams">{match.team1Name} vs {match.team2Name}</span>
                 {match.actualScore1 != null && (

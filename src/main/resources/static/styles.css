@@ -436,7 +436,7 @@ header.app-header p {
 .live-badge {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     background: #ef4444;
     color: #fff;
     font-size: 10px;
@@ -448,22 +448,23 @@ header.app-header p {
     animation: live-pulse 1.5s ease-in-out infinite;
 }
 
-.live-dot {
-    width: 7px;
-    height: 7px;
-    background: #fff;
-    border-radius: 50%;
-    animation: live-dot-pulse 1.5s ease-in-out infinite;
+.live-ball {
+    font-size: 13px;
+    line-height: 1;
+    animation: live-ball-spin 1.2s ease-in-out infinite;
 }
 
 @keyframes live-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.55; }
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
 }
 
-@keyframes live-dot-pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.4); opacity: 0.6; }
+@keyframes live-ball-spin {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(15deg) scale(1.25); }
+    50% { transform: rotate(0deg) scale(1); }
+    75% { transform: rotate(-15deg) scale(1.25); }
+    100% { transform: rotate(0deg) scale(1); }
 }
 
 .match-group .grp {
