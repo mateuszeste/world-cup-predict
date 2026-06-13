@@ -30,8 +30,9 @@ public class ResultFetchService {
     private static final Logger log = LoggerFactory.getLogger(ResultFetchService.class);
 
     private static final String API_BASE = "https://www.thesportsdb.com/api/v1/json/3";
-    // Mecz uznajemy za potencjalnie zakonczony ok. 2h po starcie
-    private static final Duration MATCH_DURATION = Duration.ofHours(2);
+    // Mecz trwa ~90 min + 15 min przerwy. 30 min po starcie to ok. 60 min przed koncem.
+    // API i tak sprawdza status "finished" zanim zwroci wynik.
+    private static final Duration MATCH_DURATION = Duration.ofMinutes(30);
 
     // Final MS 2026: 19.07.2026
     private static final String FINAL_DATE = "2026-07-19";

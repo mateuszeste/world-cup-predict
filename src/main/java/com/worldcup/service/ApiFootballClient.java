@@ -12,10 +12,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Klient Sofascore API (RapidAPI) jako fallback gdy TheSportsDB nie zwraca wyniku.
- * Plan basic: 500 requestow/miesiac.
+ * Plan basic: 500 requestow/miesiac. Cache po datami zeby nie przekraczac limitu.
  */
 @Component
 public class ApiFootballClient {
@@ -26,6 +28,7 @@ public class ApiFootballClient {
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private final Map<String, JsonNode> cache = new HashMap<>();
 
     @Value("${app.apifootball.key:}")
     private String apiKey;
@@ -42,34 +45,15 @@ public class ApiFootballClient {
     }
 
     /**
-     * Pobiera wynik meczu z Sofascore.
+     * Pobiera wynik meczu z Sofascore. Cache'uje po dacie zeby ograniczyc requesty.
      * @return [ftHome, ftAway, htHome, htAway] lub null jesli nie znaleziono
      */
     public int[] fetchResult(String homeEn, String awayEn, String date) {
         if (!isEnabled()) return null;
 
         try {
-            String uri = API_BASE + "/v1/events/schedule/date?sport_id=" + FOOTBALL_SPORT_ID
-                    + "&date=" + date;
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(uri))
-                    .header("x-rapidapi-host", "sofascore.p.rapidapi.com")
-                    .header("x-rapidapi-key", apiKey)
-                    .GET()
-                    .timeout(Duration.ofSeconds(15))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                log.warn("Sofascore zwrocil status {}: {}", response.statusCode(), response.body());
-                return null;
-            }
-
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode data = root.get("data");
-            if (data == null || !data.isArray()) return null;
+            JsonNode data = getScheduleForDate(date);
+            if (data == null) return null;
 
             for (JsonNode event : data) {
                 JsonNode homeTeam = event.get("homeTeam");
@@ -108,5 +92,41 @@ public class ApiFootballClient {
                     homeEn, awayEn, e.getMessage());
         }
         return null;
+    }
+
+    private JsonNode getScheduleForDate(String date) {
+        if (cache.containsKey(date)) {
+            return cache.get(date);
+        }
+
+        try {
+            String uri = API_BASE + "/v1/events/schedule/date?sport_id=" + FOOTBALL_SPORT_ID
+                    + "&date=" + date;
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(uri))
+                    .header("x-rapidapi-host", "sofascore.p.rapidapi.com")
+                    .header("x-rapidapi-key", apiKey)
+                    .GET()
+                    .timeout(Duration.ofSeconds(15))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                log.warn("Sofascore zwrocil status {}: {}", response.statusCode(), response.body());
+                cache.put(date, null);
+                return null;
+            }
+
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode data = root.get("data");
+            cache.put(date, data);
+            return data;
+        } catch (Exception e) {
+            log.warn("Nie udalo sie pobrac terminarza z Sofascore dla {}: {}", date, e.getMessage());
+            cache.put(date, null);
+            return null;
+        }
     }
 }

@@ -47,6 +47,14 @@ function kickoffInfo(iso, slateDate) {
     return { pl, et, nextDay };
 }
 
+function isLive(match) {
+    const now = Date.now();
+    const kickoff = new Date(match.kickoffUtc).getTime();
+    const MATCH_DURATION_MS = 2 * 60 * 60 * 1000;
+    const hasResult = match.actualScore1 != null && match.actualScore2 != null;
+    return !hasResult && now >= kickoff && now <= kickoff + MATCH_DURATION_MS;
+}
+
 function meczeWord(n) {
     if (n === 1) return "mecz";
     const ten = n % 10, hundred = n % 100;
@@ -129,6 +137,9 @@ function MatchRow({ match, onSaved, showGroup = true }) {
         <div className={"match-row" + (match.played ? " played" : "") + (locked ? " locked" : "")}>
             <div className="match-group">
                 <span className="kick">🕑 {t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                {isLive(match) && (
+                    <span className="live-badge"><span className="live-dot" />LIVE</span>
+                )}
                 {showGroup && match.phase === "GROUP" && (
                     <React.Fragment>
                         <span className="dot">·</span>
@@ -348,6 +359,9 @@ function PredictionMatchCard({ match }) {
             <div className="pred-match-header">
                 <span className="pred-stage">{stageLabel}</span>
                 <span className="pred-kickoff">🕑 {t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                {isLive(match) && (
+                    <span className="live-badge"><span className="live-dot" />LIVE</span>
+                )}
                 {hasActual && (
                     <span className="pred-actual">
                         {match.actualScore1}:{match.actualScore2}
@@ -611,6 +625,9 @@ function AdminMatchRow({ match, isExpanded, isEditingTeams, onToggle, onToggleTe
             <div className="admin-match-header" onClick={onToggle}>
                 <span className="admin-stage">{stageLabel}</span>
                 <span className="admin-kickoff">{t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                {isLive(match) && (
+                    <span className="live-badge"><span className="live-dot" />LIVE</span>
+                )}
                 <span className="admin-teams">{match.team1Name} vs {match.team2Name}</span>
                 {match.actualScore1 != null && (
                     <span className="admin-result">
