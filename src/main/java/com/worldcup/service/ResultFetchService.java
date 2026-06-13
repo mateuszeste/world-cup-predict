@@ -63,6 +63,7 @@ public class ResultFetchService {
     /** Co 5 minut: pobiera wyniki zakonczonych meczow, przyznaje punkty i sprawdza mistrza. */
     @Scheduled(fixedDelay = 5 * 60 * 1000, initialDelay = 15 * 1000)
     public void refresh() {
+        apiFootballClient.clearCache();
         fetchMissingResults();
         awardPendingPoints();
         fetchAndAwardChampion();
@@ -128,16 +129,19 @@ public class ResultFetchService {
         }
     }
 
-    /** Szuka wyniku meczu: najpierw TheSportsDB, potem API-Football jako fallback. */
+    /** Najpierw TheSportsDB; jesli brakuje HT, probuje uzupelnic go z Sofascore. */
     private int[] fetchResult(Match match) {
         int[] result = fetchFromTheSportsDB(match);
-        if (result != null) return result;
+        if (result != null && result.length == 4) return result; // mamy FT i HT z TheSportsDB
 
-        result = apiFootballClient.fetchResult(match.getTeam1En(), match.getTeam2En(), match.getDate());
-        if (result != null) {
+        int[] sofaResult = apiFootballClient.fetchResult(match.getTeam1En(), match.getTeam2En(), match.getDate());
+        if (sofaResult != null) {
             log.info("Pobrano wynik z Sofascore: {} - {}", match.getTeam1En(), match.getTeam2En());
+            if (sofaResult.length == 4) return sofaResult;
+            if (result != null) return result;
         }
-        return result;
+
+        return sofaResult != null ? sofaResult : result;
     }
 
     private int[] fetchFromTheSportsDB(Match match) {

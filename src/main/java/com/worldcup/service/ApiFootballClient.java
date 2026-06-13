@@ -12,11 +12,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Klient Sofascore API (RapidAPI) jako fallback gdy TheSportsDB nie zwraca wyniku.
+ * Klient Sofascore API przez RapidAPI, uzywany do uzupelniania brakujacego HT,
+ * gdy TheSportsDB zwroci tylko wynik FT.
  * Plan basic: 500 requestow/miesiac. Cache po datami zeby nie przekraczac limitu.
  */
 @Component
@@ -28,7 +29,7 @@ public class ApiFootballClient {
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
-    private final Map<String, JsonNode> cache = new HashMap<>();
+    private final Map<String, JsonNode> cache = new ConcurrentHashMap<>();
 
     @Value("${app.apifootball.key:}")
     private String apiKey;
@@ -42,6 +43,10 @@ public class ApiFootballClient {
 
     public boolean isEnabled() {
         return apiKey != null && !apiKey.isBlank();
+    }
+
+    public void clearCache() {
+        cache.clear();
     }
 
     /**
