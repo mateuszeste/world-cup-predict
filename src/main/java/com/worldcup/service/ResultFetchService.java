@@ -1,6 +1,7 @@
 package com.worldcup.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.worldcup.model.Match;
 import com.worldcup.model.Prediction;
 import com.worldcup.model.TournamentState;
@@ -155,7 +156,7 @@ public class ResultFetchService {
             for (Event event : response.event()) {
                 if (!hasStarted(event.strStatus())) continue;
                 if (event.intHomeScore() == null || event.intAwayScore() == null) continue;
-                if (!match.getDate().equals(event.dateEvent())) continue;
+                if (!match.getDate().equals(event.dateEvent()) && !match.getDate().equals(event.dateEventLocal())) continue;
 
                 int ftHome = Integer.parseInt(event.intHomeScore());
                 int ftAway = Integer.parseInt(event.intAwayScore());
@@ -329,17 +330,26 @@ public class ResultFetchService {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record SearchEventsResponse(List<Event> event) {}
+    public record SearchEventsResponse(@JsonProperty("event") List<Event> event) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Event(String dateEvent, String strStatus,
-                         String intHomeScore, String intAwayScore,
-                         String intScore1Half, String intScore2Half) {}
+    public record Event(
+            @JsonProperty("dateEvent") String dateEvent,
+            @JsonProperty("dateEventLocal") String dateEventLocal,
+            @JsonProperty("strStatus") String strStatus,
+            @JsonProperty("intHomeScore") String intHomeScore,
+            @JsonProperty("intAwayScore") String intAwayScore,
+            @JsonProperty("intScore1Half") String intScore1Half,
+            @JsonProperty("intScore2Half") String intScore2Half) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record EventsDayResponse(List<DayEvent> events) {}
+    public record EventsDayResponse(@JsonProperty("events") List<DayEvent> events) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record DayEvent(String strEvent, String strHomeTeam, String strAwayTeam,
-                             String intHomeScore, String intAwayScore) {}
+    public record DayEvent(
+            @JsonProperty("strEvent") String strEvent,
+            @JsonProperty("strHomeTeam") String strHomeTeam,
+            @JsonProperty("strAwayTeam") String strAwayTeam,
+            @JsonProperty("intHomeScore") String intHomeScore,
+            @JsonProperty("intAwayScore") String intAwayScore) {}
 }

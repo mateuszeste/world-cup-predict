@@ -1,10 +1,6 @@
 package com.worldcup.dto;
 
-import com.worldcup.model.User;
-import com.worldcup.service.Teams;
-
 import java.util.List;
-import java.util.Map;
 
 /** Widok wszystkich typów wszystkich użytkowników (dla zakładki Typy). */
 public class AllPredictionsView {

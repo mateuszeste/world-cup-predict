@@ -211,7 +211,7 @@ public class MatchController {
                     try { return java.time.Instant.parse(m.getKickoffUtc()); }
                     catch (Exception e) { return java.time.Instant.MAX; }
                 })
-                .min(java.time.Instant::compareTo)
+                .min(Comparator.naturalOrder())
                 .orElse(java.time.Instant.MAX);
         boolean tournamentLocked = !now.isBefore(tournamentStart);
 
@@ -222,7 +222,7 @@ public class MatchController {
                     String code = show ? u.getChampionPick() : "HIDDEN";
                     String name = show ? Teams.CODES.entrySet().stream()
                             .filter(e -> e.getValue().equals(code))
-                            .map(Map.Entry::getKey)
+                            .map(e -> e.getKey())
                             .findFirst().orElse(code) : "???";
                     return new AllPredictionsView.ChampionPickEntry(u.getUsername(), code, name);
                 })
