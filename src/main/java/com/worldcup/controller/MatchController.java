@@ -17,6 +17,7 @@ import com.worldcup.repository.TournamentStateRepository;
 import com.worldcup.repository.UserRepository;
 import com.worldcup.service.JwtService;
 import com.worldcup.service.ResultFetchService;
+import com.worldcup.service.ScoringService;
 import com.worldcup.service.Teams;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -142,9 +144,76 @@ public class MatchController {
     @GetMapping("/leaderboard")
     public List<LeaderboardEntry> getLeaderboard(@RequestHeader(value = "Authorization", required = false) String auth) {
         requireUser(auth);
-        return userRepository.findAllByOrderByPointsDescUsernameAsc().stream()
-                .map(LeaderboardEntry::new)
-                .toList();
+
+        List<User> users = userRepository.findAll();
+        List<Match> matches = matchRepository.findAll();
+        List<Prediction> predictions = predictionRepository.findAll();
+        TournamentState state = tournamentStateRepository.getOrCreate();
+
+        // Group predictions by username
+        Map<String, List<Prediction>> predsByUser = new HashMap<>();
+        for (Prediction p : predictions) {
+            if (p.getUsername() != null) {
+                predsByUser.computeIfAbsent(p.getUsername().toLowerCase(), k -> new ArrayList<>()).add(p);
+            }
+        }
+
+        // Map matches by ID
+        Map<Long, Match> matchMap = new HashMap<>();
+        for (Match m : matches) {
+            matchMap.put(m.getId(), m);
+        }
+
+        List<LeaderboardEntry> entries = new ArrayList<>();
+        for (User user : users) {
+            int exact = 0;
+            int direction = 0;
+            int ht = 0;
+            int bonus = 0;
+
+            List<Prediction> userPreds = predsByUser.getOrDefault(user.getUsername().toLowerCase(), List.of());
+            for (Prediction p : userPreds) {
+                Match m = matchMap.get(p.getMatchId());
+                if (m == null || "TEST".equals(m.getGroupName())) continue;
+                if (m.getActualScore1() == null || m.getActualScore2() == null) continue;
+                if (p.getScore1() == null || p.getScore2() == null) continue;
+
+                if (p.getScore1().equals(m.getActualScore1()) && p.getScore2().equals(m.getActualScore2())) {
+                    exact++;
+                } else {
+                    int predDir = Integer.signum(p.getScore1() - p.getScore2());
+                    int actualDir = Integer.signum(m.getActualScore1() - m.getActualScore2());
+                    if (predDir == actualDir) {
+                        direction++;
+                    }
+                }
+
+                if (p.getHtScore1() != null && p.getHtScore2() != null &&
+                        m.getActualHtScore1() != null && m.getActualHtScore2() != null) {
+                    if (p.getHtScore1().equals(m.getActualHtScore1()) && p.getHtScore2().equals(m.getActualHtScore2())) {
+                        ht++;
+                    }
+                }
+            }
+
+            if (state.getChampionCode() != null && state.getChampionCode().equals(user.getChampionPick())) {
+                bonus += ScoringService.BONUS_POINTS;
+            }
+            if (state.getTopScorerName() != null && !state.getTopScorerName().isEmpty() &&
+                    state.getTopScorerName().equalsIgnoreCase(user.getTopScorerPick())) {
+                bonus += ScoringService.BONUS_POINTS;
+            }
+
+            entries.add(new LeaderboardEntry(user.getUsername(), user.getPoints(), exact, direction, ht, bonus));
+        }
+
+        entries.sort((a, b) -> {
+            int cmp = Integer.compare(b.getPoints(), a.getPoints());
+            if (cmp != 0) return cmp;
+            return a.getUsername().compareToIgnoreCase(b.getUsername());
+        });
+
+        return entries;
     }
 
     // ============================================================
@@ -162,7 +231,7 @@ public class MatchController {
         // Mapa: matchId -> lista predykcji
         Map<Long, List<Prediction>> predictionsByMatch = new HashMap<>();
         for (Prediction p : predictionRepository.findAll()) {
-            predictionsByMatch.computeIfAbsent(p.getMatchId(), k -> new java.util.ArrayList<>()).add(p);
+            predictionsByMatch.computeIfAbsent(p.getMatchId(), k -> new ArrayList<>()).add(p);
         }
 
         // Mapa: username -> User (szybki lookup)

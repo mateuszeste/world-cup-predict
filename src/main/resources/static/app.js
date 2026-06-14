@@ -222,22 +222,54 @@ function Leaderboard() {
 
     return (
         <div className="leaderboard">
-            <table className="leaderboard-table">
-                <thead><tr>
-                    <th className="lb-rank">#</th>
-                    <th>Użytkownik</th>
-                    <th className="lb-points">Punkty</th>
-                </tr></thead>
-                <tbody>
-                    {entries.map((e, i) => (
-                        <tr key={e.username}>
-                            <td className="lb-rank">{i + 1}</td>
-                            <td>{e.username}</td>
-                            <td className="lb-points">{e.points}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            <div className="table-responsive">
+                <table className="leaderboard-table">
+                    <thead><tr>
+                        <th className="lb-rank">#</th>
+                        <th>Użytkownik</th>
+                        <th className="lb-stat">FT (5 pkt)</th>
+                        <th className="lb-stat">Kierunek (2 pkt)</th>
+                        <th className="lb-stat">PT (1 pkt)</th>
+                        <th className="lb-stat">Bonus</th>
+                        <th className="lb-points">Suma</th>
+                    </tr></thead>
+                    <tbody>
+                        {entries.map((e, i) => (
+                            <tr key={e.username}>
+                                <td className="lb-rank">{i + 1}</td>
+                                <td className="lb-username">{e.username}</td>
+                                <td className="lb-stat">{e.exactHits}</td>
+                                <td className="lb-stat">{e.directionHits}</td>
+                                <td className="lb-stat">{e.htHits}</td>
+                                <td className="lb-stat">{e.bonusPoints > 0 ? `+${e.bonusPoints}` : "0"}</td>
+                                <td className="lb-points">{e.points}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="leaderboard-legend">
+                <h3>💡 Zasady punktacji</h3>
+                <div className="legend-grid">
+                    <div className="legend-item">
+                        <span className="legend-points">+5 pkt</span>
+                        <span className="legend-desc">Dokładny wynik meczu (FT)</span>
+                    </div>
+                    <div className="legend-item">
+                        <span className="legend-points">+2 pkt</span>
+                        <span className="legend-desc">Kierunek meczu (zwycięstwo / remis)</span>
+                    </div>
+                    <div className="legend-item">
+                        <span className="legend-points">+1 pkt</span>
+                        <span className="legend-desc">Premia za dokładny wynik do przerwy (PT)</span>
+                    </div>
+                    <div className="legend-item">
+                        <span className="legend-points">+15 pkt</span>
+                        <span className="legend-desc">Trafiony Mistrz lub Król strzelców</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

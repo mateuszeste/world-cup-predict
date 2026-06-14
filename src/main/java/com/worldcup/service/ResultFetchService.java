@@ -19,6 +19,9 @@ import org.springframework.web.client.RestClient;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Pobiera rzeczywiste wyniki zakonczonych meczow z darmowego API TheSportsDB
@@ -31,8 +34,10 @@ public class ResultFetchService {
     private static final Logger log = LoggerFactory.getLogger(ResultFetchService.class);
 
     private static final String API_BASE = "https://www.thesportsdb.com/api/v1/json/3";
-    // Mecz trwa ~90 min + 15 min przerwy. 30 min po starcie to ok. 60 min przed koncem.
-    // API i tak sprawdza status "finished" zanim zwroci wynik.
+    // Opcjonalna optymalizacja: Mecz trwa ~90 min + 15 min przerwy.
+    // Aby nie marnować zapytań do API, zaczynamy sprawdzać wyniki
+    // dopiero 30 min po rozpoczęciu (tj. w połowie pierwszej połowy).
+    // Poprawność i tak gwarantuje weryfikacja statusu w isFinished().
     private static final Duration MATCH_DURATION = Duration.ofMinutes(30);
 
     // Final MS 2026: 19.07.2026
@@ -69,31 +74,40 @@ public class ResultFetchService {
         fetchAndAwardChampion();
     }
 
-    /** Dla zakonczonych meczow bez wyniku probuje pobrac go z darmowego API. */
     public void fetchMissingResults() {
         Instant now = Instant.now();
         for (Match match : matchRepository.findAll()) {
             // Pomijamy mecze TBD (brak angielskich nazw), mecz testowy i juz wypelnione
             if ("TEST".equals(match.getGroupName())) continue;
-            if (match.getActualScore1() != null) continue;
+            if (match.getActualScore1() != null && match.getActualHtScore1() != null) continue;
             if (match.getTeam1En() == null || match.getTeam1En().isBlank()) continue;
 
             Instant kickoff = Instant.parse(match.getKickoffUtc());
-            if (now.isBefore(kickoff.plus(MATCH_DURATION))) continue; // mecz jeszcze trwa
+            if (now.isBefore(kickoff.plus(MATCH_DURATION))) continue; // mecz jeszcze trwa (optymalizacja)
 
             int[] result = fetchResult(match);
             if (result != null) {
-                // result: [ftHome, ftAway, htHome, htAway] – HT moze byc null
-                match.setActualScore1(result[0]);
-                match.setActualScore2(result[1]);
-                if (result.length == 4) {
-                    match.setActualHtScore1(result[2]);
-                    match.setActualHtScore2(result[3]);
+                boolean changed = false;
+                if (!Objects.equals(match.getActualScore1(), result[0]) || 
+                    !Objects.equals(match.getActualScore2(), result[1])) {
+                    match.setActualScore1(result[0]);
+                    match.setActualScore2(result[1]);
+                    changed = true;
                 }
-                matchRepository.save(match);
-                log.info("Pobrano wynik {} - {}: {}:{} (HT: {}:{})",
-                        match.getTeam1En(), match.getTeam2En(), result[0], result[1],
-                        result.length == 4 ? result[2] : "?", result.length == 4 ? result[3] : "?");
+                if (result.length == 4) {
+                    if (!Objects.equals(match.getActualHtScore1(), result[2]) || 
+                        !Objects.equals(match.getActualHtScore2(), result[3])) {
+                        match.setActualHtScore1(result[2]);
+                        match.setActualHtScore2(result[3]);
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    matchRepository.save(match);
+                    log.info("Pobrano/zaktualizowano wynik {} - {}: {}:{} (HT: {}:{})",
+                            match.getTeam1En(), match.getTeam2En(), result[0], result[1],
+                            result.length == 4 ? result[2] : "?", result.length == 4 ? result[3] : "?");
+                }
             }
         }
     }
@@ -158,7 +172,7 @@ public class ResultFetchService {
             if (response == null || response.event() == null) return null;
 
             for (Event event : response.event()) {
-                if (!hasStarted(event.strStatus())) continue;
+                if (!isFinished(event.strStatus())) continue;
                 if (event.intHomeScore() == null || event.intAwayScore() == null) continue;
                 if (!match.getDate().equals(event.dateEvent()) && !match.getDate().equals(event.dateEventLocal())) continue;
 
@@ -180,11 +194,16 @@ public class ResultFetchService {
         return null;
     }
 
-    private static final List<String> NOT_STARTED_STATUSES =
-            List.of("", "ns", "not started", "postponed", "cancelled", "tbd");
+    private static final Set<String> FINISHED_STATUSES = Set.of(
+            "ft", "aet", "ap", "finished", "pen", "matchfinished", "gamefinished"
+    );
 
-    private boolean hasStarted(String status) {
-        return status != null && !NOT_STARTED_STATUSES.contains(status.toLowerCase());
+    boolean isFinished(String status) {
+        if (status == null) {
+            return false;
+        }
+        String normalized = status.replaceAll("[\\W_]", "").toLowerCase(Locale.ROOT);
+        return FINISHED_STATUSES.contains(normalized);
     }
 
     /**
