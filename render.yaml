@@ -21,3 +21,5 @@ services:
         sync: false
       - key: DB_PASSWORD
         sync: false
+      - key: API_FOOTBALL_KEY
+        sync: false   # Klucz API-Football z api-football.com (darmowy: 100 req/dzien)

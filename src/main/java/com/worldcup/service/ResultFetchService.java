@@ -143,14 +143,18 @@ public class ResultFetchService {
         }
     }
 
-    /** Najpierw TheSportsDB; jesli brakuje HT, probuje uzupelnic go z Sofascore. */
+    /**
+     * Najpierw TheSportsDB (FT + opcjonalnie HT); jesli brakuje HT,
+     * probuje uzupelnic z API-Football (api-football.com).
+     * HT dla meczow MS 2026 trzeba ustawiac recznie przez admin panel.
+     */
     private int[] fetchResult(Match match) {
         int[] result = fetchFromTheSportsDB(match);
         if (result != null && result.length == 4) return result; // mamy FT i HT z TheSportsDB
 
         int[] sofaResult = apiFootballClient.fetchResult(match.getTeam1En(), match.getTeam2En(), match.getDate());
         if (sofaResult != null) {
-            log.info("Pobrano wynik z Sofascore: {} - {}", match.getTeam1En(), match.getTeam2En());
+            log.info("Pobrano wynik z API-Football: {} - {}", match.getTeam1En(), match.getTeam2En());
             if (sofaResult.length == 4) return sofaResult;
             if (result != null) return result;
         }

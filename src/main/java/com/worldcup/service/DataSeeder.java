@@ -72,7 +72,7 @@ public class DataSeeder implements CommandLineRunner {
         add(m, "2026-06-14T19:00", "E", "Wybrzeze Kosci Sloniowej", "Ekwador");
         add(m, "2026-06-14T22:00", "F", "Szwecja", "Tunezja");
 
-        add(m, "2026-06-15T13:00", "H", "Hiszpania", "Republika Zielonego Przyladka");
+        add(m, "2026-06-15T12:00", "H", "Hiszpania", "Republika Zielonego Przyladka");
         add(m, "2026-06-15T18:00", "G", "Belgia", "Egipt");
         add(m, "2026-06-15T18:00", "H", "Arabia Saudyjska", "Urugwaj");
         addLate(m, "2026-06-16T00:00", "G", "Iran", "Nowa Zelandia");
