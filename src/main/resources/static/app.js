@@ -136,7 +136,7 @@ function MatchRow({ match, onSaved, showGroup = true }) {
     return (
         <div className={"match-row" + (match.played ? " played" : "") + (locked ? " locked" : "")}>
             <div className="match-group">
-                <span className="kick">🕑 {t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                <span className="kick">🕑 {t.pl} PL {t.et} ET{t.nextDay ? ` (${t.nextDay})` : ""}</span>
                 {isLive(match) && (
                     <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
@@ -366,7 +366,7 @@ function PredictionMatchCard({ match }) {
         <div className={"prediction-match-card" + (locked ? " locked" : "")}>
             <div className="pred-match-header">
                 <span className="pred-stage">{stageLabel}</span>
-                <span className="pred-kickoff">🕑 {t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                <span className="pred-kickoff">🕑 {t.pl} PL {t.et} ET{t.nextDay ? ` (${t.nextDay})` : ""}</span>
                 {isLive(match) && (
                     <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
@@ -632,7 +632,7 @@ function AdminMatchRow({ match, isExpanded, isEditingTeams, onToggle, onToggleTe
         <div className="admin-match-row">
             <div className="admin-match-header" onClick={onToggle}>
                 <span className="admin-stage">{stageLabel}</span>
-                <span className="admin-kickoff">{t.pl}{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                <span className="admin-kickoff">{t.pl} PL {t.et} ET{t.nextDay ? ` (${t.nextDay})` : ""}</span>
                 {isLive(match) && (
                     <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
