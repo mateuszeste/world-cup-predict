@@ -102,6 +102,7 @@ public class ApiFootballClient {
                         return new int[]{ftHome, ftAway, htHome, htAway};
                     }
                 }
+                log.debug("API-Football zwrocil FT ({}:{}), ale brakuje wyniku HT dla {} vs {}", ftHome, ftAway, homeEn, awayEn);
                 return new int[]{ftHome, ftAway};
             }
         } catch (Exception e) {
@@ -112,12 +113,18 @@ public class ApiFootballClient {
     }
 
     private JsonNode getFixturesForDate(String date) {
+        if (date == null || !date.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            log.warn("Nieprawidlowy format daty dla API-Football: {}", date);
+            return null;
+        }
+
         if (cache.containsKey(date)) {
             return cache.get(date);
         }
 
         try {
-            String uri = API_BASE + "/fixtures?date=" + date + "&league=" + WORLD_CUP_ID + "&season=2026";
+            String year = date.substring(0, 4);
+            String uri = API_BASE + "/fixtures?date=" + date + "&league=" + WORLD_CUP_ID + "&season=" + year;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(uri))
@@ -128,6 +135,11 @@ public class ApiFootballClient {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
+            if (response.statusCode() == 429) {
+                log.warn("Przekroczono limit zapytan API-Football (HTTP 429).");
+                return null;
+            }
+
             if (response.statusCode() != 200) {
                 log.warn("API-Football zwrocil status {}: {}", response.statusCode(), response.body());
                 return null;
@@ -135,7 +147,10 @@ public class ApiFootballClient {
 
             JsonNode root = objectMapper.readTree(response.body());
             JsonNode data = root.get("response");
-            cache.put(date, data);
+            
+            if (data != null && !data.isNull()) {
+                cache.put(date, data);
+            }
             return data;
         } catch (Exception e) {
             log.warn("Nie udalo sie pobrac terminarza z API-Football dla {}: {}", date, e.getMessage());
