@@ -33,7 +33,9 @@ public class ApiFootballClient {
             "Korea", "Korea Republic",
             "South Korea", "Korea Republic",
             "Netherlands", "Holland",
-            "Czech Republic", "Czechia"
+            "Czech Republic", "Czechia",
+            "IR Iran", "Iran",
+            "Islamic Republic of Iran", "Iran"
     );
 
     private static class CacheEntry {
