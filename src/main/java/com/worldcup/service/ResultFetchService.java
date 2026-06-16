@@ -78,7 +78,7 @@ public class ResultFetchService {
         for (Match match : matchRepository.findAll()) {
             // Pomijamy mecze TBD (brak angielskich nazw), mecz testowy i juz wypelnione
             if ("TEST".equals(match.getGroupName())) continue;
-            if (match.isPointsAwarded() || (match.getHtFetchAttempts() != null && match.getHtFetchAttempts() >= 3)) continue;
+            if (match.getHtFetchAttempts() != null && match.getHtFetchAttempts() >= 3) continue;
             if (match.getActualScore1() != null && match.getActualHtScore1() != null) continue;
             if (match.getTeam1En() == null || match.getTeam1En().isBlank()) continue;
 
@@ -120,8 +120,13 @@ public class ResultFetchService {
                 int[] sofaResult = apiFootballClient.fetchResult(match.getTeam1En(), match.getTeam2En(), match.getDate());
                 if (sofaResult != null && sofaResult.length == 4) {
                     log.info("Pobrano wynik z API-Football: {} - {} (HT: {}:{})", match.getTeam1En(), match.getTeam2En(), sofaResult[2], sofaResult[3]);
+                    
+                    // Jesli mecz mial juz rozdane punkty (za same FT), cofamy je
+                    retractPointsForMatch(match);
+                    
                     match.setActualHtScore1(sofaResult[2]);
                     match.setActualHtScore2(sofaResult[3]);
+                    match.setPointsAwarded(false); // wymusza poprawne zliczenie punktow ponownie (tym razem z HT) w awardPendingPoints()
                     matchRepository.save(match);
                 } else if (sofaResult == null) {
                     match.setHtFetchAttempts((match.getHtFetchAttempts() == null ? 0 : match.getHtFetchAttempts()) + 1);
