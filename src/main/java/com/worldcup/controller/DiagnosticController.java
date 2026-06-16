@@ -1,5 +1,6 @@
 package com.worldcup.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.worldcup.model.Match;
 import com.worldcup.repository.MatchRepository;
 import com.worldcup.service.ApiFootballClient;
@@ -29,6 +30,14 @@ public class DiagnosticController {
         Map<String, Object> response = new HashMap<>();
         
         response.put("apiFootball_enabled", apiFootballClient.isEnabled());
+        response.put("apiFootball_lastError", apiFootballClient.getLastError());
+        response.put("apiFootball_lastRequestUrl", apiFootballClient.getLastRequestUrl());
+        response.put("apiFootball_lastResponseStatus", apiFootballClient.getLastResponseStatus());
+        
+        JsonNode lastResponse = apiFootballClient.getLastResponse();
+        if (lastResponse != null) {
+            response.put("apiFootball_lastResponse", lastResponse.toString());
+        }
         
         List<Match> blockedMatches = matchRepository.findAll().stream()
             .filter(m -> m.getHtFetchAttempts() != null && m.getHtFetchAttempts() >= 3)
@@ -39,8 +48,6 @@ public class DiagnosticController {
             info.put("id", m.getId());
             info.put("match", m.getTeam1En() + " vs " + m.getTeam2En());
             info.put("attempts", m.getHtFetchAttempts());
-            info.put("actualScore1", m.getActualScore1());
-            info.put("actualHtScore1", m.getActualHtScore1());
             return info;
         }).collect(Collectors.toList());
         

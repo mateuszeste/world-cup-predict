@@ -53,6 +53,16 @@ public class ApiFootballClient {
     @Value("${app.apifootball.key:}")
     private String apiKey;
 
+    private String lastError;
+    private String lastRequestUrl;
+    private Integer lastResponseStatus;
+    private JsonNode lastResponse;
+
+    public String getLastError() { return lastError; }
+    public String getLastRequestUrl() { return lastRequestUrl; }
+    public Integer getLastResponseStatus() { return lastResponseStatus; }
+    public JsonNode getLastResponse() { return lastResponse; }
+
     public ApiFootballClient(ObjectMapper objectMapper) {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -154,6 +164,8 @@ public class ApiFootballClient {
         try {
             String year = date.substring(0, 4);
             String uri = API_BASE + "/fixtures?date=" + date + "&league=" + WORLD_CUP_ID + "&season=" + year;
+            this.lastRequestUrl = uri;
+            this.lastError = null;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(uri))
@@ -163,27 +175,34 @@ public class ApiFootballClient {
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            this.lastResponseStatus = response.statusCode();
 
             if (response.statusCode() == 429) {
                 log.warn("Przekroczono limit zapytan API-Football (HTTP 429). Blokada na 1h.");
                 rateLimitUntil = Instant.now().plus(Duration.ofHours(1));
+                this.lastError = "HTTP 429 Rate Limit";
                 return null;
             }
 
             if (response.statusCode() != 200) {
                 log.warn("API-Football zwrocil status {}: {}", response.statusCode(), response.body());
+                this.lastError = "HTTP " + response.statusCode() + " " + response.body();
                 return null;
             }
 
             JsonNode root = objectMapper.readTree(response.body());
+            this.lastResponse = root;
             JsonNode data = root.get("response");
             
             if (data != null && !data.isNull()) {
                 cache.put(date, new CacheEntry(data, Instant.now().plus(Duration.ofMinutes(15))));
+            } else {
+                this.lastError = "Zwrócono 200 OK, ale brak węzła 'response'";
             }
             return data;
         } catch (Exception e) {
             log.warn("Nie udalo sie pobrac terminarza z API-Football dla {}: {}", date, e.getMessage());
+            this.lastError = "Exception: " + e.getMessage();
             return null;
         }
     }
