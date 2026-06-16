@@ -128,7 +128,7 @@ public class ResultFetchService {
                     match.setActualHtScore2(sofaResult[3]);
                     match.setPointsAwarded(false); // wymusza poprawne zliczenie punktow ponownie (tym razem z HT) w awardPendingPoints()
                     matchRepository.save(match);
-                } else if (sofaResult == null) {
+                } else if (sofaResult == null && apiFootballClient.isEnabled()) {
                     match.setHtFetchAttempts((match.getHtFetchAttempts() == null ? 0 : match.getHtFetchAttempts()) + 1);
                     matchRepository.save(match);
                 }
