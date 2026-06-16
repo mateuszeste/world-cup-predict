@@ -68,7 +68,6 @@ public class ResultFetchService {
     /** Co 5 minut: pobiera wyniki zakonczonych meczow, przyznaje punkty i sprawdza mistrza. */
     @Scheduled(fixedDelay = 5 * 60 * 1000, initialDelay = 15 * 1000)
     public void refresh() {
-        apiFootballClient.clearCache();
         fetchMissingResults();
         awardPendingPoints();
         fetchAndAwardChampion();
@@ -79,34 +78,54 @@ public class ResultFetchService {
         for (Match match : matchRepository.findAll()) {
             // Pomijamy mecze TBD (brak angielskich nazw), mecz testowy i juz wypelnione
             if ("TEST".equals(match.getGroupName())) continue;
+            if (match.isPointsAwarded() || (match.getHtFetchAttempts() != null && match.getHtFetchAttempts() >= 3)) continue;
             if (match.getActualScore1() != null && match.getActualHtScore1() != null) continue;
             if (match.getTeam1En() == null || match.getTeam1En().isBlank()) continue;
 
             Instant kickoff = Instant.parse(match.getKickoffUtc());
             if (now.isBefore(kickoff.plus(MATCH_DURATION))) continue; // mecz jeszcze trwa (optymalizacja)
 
-            int[] result = fetchResult(match);
-            if (result != null) {
-                boolean changed = false;
-                if (!Objects.equals(match.getActualScore1(), result[0]) || 
-                    !Objects.equals(match.getActualScore2(), result[1])) {
-                    match.setActualScore1(result[0]);
-                    match.setActualScore2(result[1]);
-                    changed = true;
-                }
-                if (result.length == 4) {
-                    if (!Objects.equals(match.getActualHtScore1(), result[2]) || 
-                        !Objects.equals(match.getActualHtScore2(), result[3])) {
-                        match.setActualHtScore1(result[2]);
-                        match.setActualHtScore2(result[3]);
+            int[] result = null;
+            if (match.getActualScore1() == null) {
+                result = fetchFromTheSportsDB(match);
+                if (result != null) {
+                    boolean changed = false;
+                    if (!Objects.equals(match.getActualScore1(), result[0]) || 
+                        !Objects.equals(match.getActualScore2(), result[1])) {
+                        match.setActualScore1(result[0]);
+                        match.setActualScore2(result[1]);
                         changed = true;
                     }
+                    if (result.length == 4) {
+                        if (!Objects.equals(match.getActualHtScore1(), result[2]) || 
+                            !Objects.equals(match.getActualHtScore2(), result[3])) {
+                            match.setActualHtScore1(result[2]);
+                            match.setActualHtScore2(result[3]);
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        matchRepository.save(match);
+                        log.info("Pobrano/zaktualizowano wynik z TheSportsDB {} - {}: {}:{} (HT: {}:{})",
+                                match.getTeam1En(), match.getTeam2En(), result[0], result[1],
+                                result.length == 4 ? result[2] : "?", result.length == 4 ? result[3] : "?");
+                    }
                 }
-                if (changed) {
+            } else {
+                result = new int[]{match.getActualScore1(), match.getActualScore2()};
+            }
+
+            // Mamy wynik FT, ale brakuje HT - wywolujemy API-Football
+            if (result != null && match.getActualHtScore1() == null) {
+                int[] sofaResult = apiFootballClient.fetchResult(match.getTeam1En(), match.getTeam2En(), match.getDate());
+                if (sofaResult != null && sofaResult.length == 4) {
+                    log.info("Pobrano wynik z API-Football: {} - {} (HT: {}:{})", match.getTeam1En(), match.getTeam2En(), sofaResult[2], sofaResult[3]);
+                    match.setActualHtScore1(sofaResult[2]);
+                    match.setActualHtScore2(sofaResult[3]);
                     matchRepository.save(match);
-                    log.info("Pobrano/zaktualizowano wynik {} - {}: {}:{} (HT: {}:{})",
-                            match.getTeam1En(), match.getTeam2En(), result[0], result[1],
-                            result.length == 4 ? result[2] : "?", result.length == 4 ? result[3] : "?");
+                } else if (sofaResult == null) {
+                    match.setHtFetchAttempts((match.getHtFetchAttempts() == null ? 0 : match.getHtFetchAttempts()) + 1);
+                    matchRepository.save(match);
                 }
             }
         }
@@ -122,6 +141,12 @@ public class ResultFetchService {
                     || match.getActualScore1() == null
                     || match.getActualScore2() == null) {
                 continue;
+            }
+
+            // Upewnijmy sie, ze wykorzystalismy proby z API-Football zanim rozdamy punkty bez HT
+            if (match.getActualHtScore1() == null) {
+                int attempts = match.getHtFetchAttempts() != null ? match.getHtFetchAttempts() : 0;
+                if (attempts < 3) continue;
             }
             for (Prediction p : predictionRepository.findByMatchId(match.getId())) {
                 if (p.getScore1() == null || p.getScore2() == null) continue;
@@ -143,24 +168,7 @@ public class ResultFetchService {
         }
     }
 
-    /**
-     * Najpierw TheSportsDB (FT + opcjonalnie HT); jesli brakuje HT,
-     * probuje uzupelnic z API-Football (api-football.com).
-     * HT dla meczow MS 2026 trzeba ustawiac recznie przez admin panel.
-     */
-    private int[] fetchResult(Match match) {
-        int[] result = fetchFromTheSportsDB(match);
-        if (result != null && result.length == 4) return result; // mamy FT i HT z TheSportsDB
 
-        int[] sofaResult = apiFootballClient.fetchResult(match.getTeam1En(), match.getTeam2En(), match.getDate());
-        if (sofaResult != null) {
-            log.info("Pobrano wynik z API-Football: {} - {}", match.getTeam1En(), match.getTeam2En());
-            if (sofaResult.length == 4) return sofaResult;
-            if (result != null) return result;
-        }
-
-        return sofaResult != null ? sofaResult : result;
-    }
 
     private int[] fetchFromTheSportsDB(Match match) {
         try {

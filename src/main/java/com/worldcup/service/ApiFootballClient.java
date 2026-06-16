@@ -12,6 +12,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,9 +28,27 @@ public class ApiFootballClient {
     private static final String API_BASE = "https://v3.football.api-sports.io";
     private static final int WORLD_CUP_ID = 1;
 
+    private static final Map<String, String> ALIAS_TABLE = Map.of(
+            "USA", "United States",
+            "Korea", "Korea Republic",
+            "South Korea", "Korea Republic",
+            "Netherlands", "Holland",
+            "Czech Republic", "Czechia"
+    );
+
+    private static class CacheEntry {
+        final JsonNode data;
+        final Instant expiryTime;
+        CacheEntry(JsonNode data, Instant expiryTime) {
+            this.data = data;
+            this.expiryTime = expiryTime;
+        }
+    }
+
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
-    private final Map<String, JsonNode> cache = new ConcurrentHashMap<>();
+    private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    private Instant rateLimitUntil = null;
 
     @Value("${app.apifootball.key:}")
     private String apiKey;
@@ -43,10 +62,6 @@ public class ApiFootballClient {
 
     public boolean isEnabled() {
         return apiKey != null && !apiKey.isBlank();
-    }
-
-    public void clearCache() {
-        cache.clear();
     }
 
     /**
@@ -75,7 +90,7 @@ public class ApiFootballClient {
                 String apiAway = awayTeam.has("name") ? awayTeam.get("name").asText() : null;
                 if (apiHome == null || apiAway == null) continue;
 
-                if (!apiHome.equalsIgnoreCase(homeEn) || !apiAway.equalsIgnoreCase(awayEn)) continue;
+                if (!matchTeamName(apiHome, homeEn) || !matchTeamName(apiAway, awayEn)) continue;
 
                 JsonNode fixtureNode = fixture.get("fixture");
                 if (fixtureNode == null) continue;
@@ -112,14 +127,28 @@ public class ApiFootballClient {
         return null;
     }
 
+    private boolean matchTeamName(String apiName, String dbName) {
+        if (apiName.equalsIgnoreCase(dbName)) return true;
+        if (dbName.equalsIgnoreCase(ALIAS_TABLE.get(apiName))) return true;
+        if (apiName.equalsIgnoreCase(ALIAS_TABLE.get(dbName))) return true;
+        return false;
+    }
+
+
     private JsonNode getFixturesForDate(String date) {
         if (date == null || !date.matches("\\d{4}-\\d{2}-\\d{2}")) {
             log.warn("Nieprawidlowy format daty dla API-Football: {}", date);
             return null;
         }
 
-        if (cache.containsKey(date)) {
-            return cache.get(date);
+        if (rateLimitUntil != null && Instant.now().isBefore(rateLimitUntil)) {
+            log.debug("Zapytania do API-Football wstrzymane po błędzie 429.");
+            return null;
+        }
+
+        CacheEntry entry = cache.get(date);
+        if (entry != null && Instant.now().isBefore(entry.expiryTime)) {
+            return entry.data;
         }
 
         try {
@@ -136,7 +165,8 @@ public class ApiFootballClient {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 429) {
-                log.warn("Przekroczono limit zapytan API-Football (HTTP 429).");
+                log.warn("Przekroczono limit zapytan API-Football (HTTP 429). Blokada na 1h.");
+                rateLimitUntil = Instant.now().plus(Duration.ofHours(1));
                 return null;
             }
 
@@ -149,7 +179,7 @@ public class ApiFootballClient {
             JsonNode data = root.get("response");
             
             if (data != null && !data.isNull()) {
-                cache.put(date, data);
+                cache.put(date, new CacheEntry(data, Instant.now().plus(Duration.ofMinutes(15))));
             }
             return data;
         } catch (Exception e) {

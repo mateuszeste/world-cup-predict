@@ -34,6 +34,9 @@ public class Match {
     private Integer actualScore1;   // wynik pelnego czasu
     private Integer actualScore2;
     private boolean pointsAwarded;  // czy punkty za ten mecz zostaly juz przyznane
+    
+    private Integer htFetchAttempts = 0; // ile razy probowalismy pobrac wynik HT z API-Football
+
 
     public Match() {
     }
@@ -99,4 +102,7 @@ public class Match {
 
     public boolean isPointsAwarded() { return pointsAwarded; }
     public void setPointsAwarded(boolean pointsAwarded) { this.pointsAwarded = pointsAwarded; }
+
+    public Integer getHtFetchAttempts() { return htFetchAttempts; }
+    public void setHtFetchAttempts(Integer htFetchAttempts) { this.htFetchAttempts = htFetchAttempts; }
 }
