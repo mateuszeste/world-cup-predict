@@ -162,8 +162,7 @@ public class ApiFootballClient {
         }
 
         try {
-            String year = date.substring(0, 4);
-            String uri = API_BASE + "/fixtures?date=" + date + "&league=" + WORLD_CUP_ID + "&season=" + year;
+            String uri = API_BASE + "/fixtures?date=" + date;
             this.lastRequestUrl = uri;
             this.lastError = null;
 
