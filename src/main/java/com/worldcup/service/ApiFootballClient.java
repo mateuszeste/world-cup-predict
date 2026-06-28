@@ -26,7 +26,6 @@ public class ApiFootballClient {
 
     private static final Logger log = LoggerFactory.getLogger(ApiFootballClient.class);
     private static final String API_BASE = "https://v3.football.api-sports.io";
-    private static final int WORLD_CUP_ID = 1;
 
     private static final Map<String, String> ALIAS_TABLE = Map.of(
             "USA", "United States",

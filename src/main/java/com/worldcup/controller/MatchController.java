@@ -19,6 +19,7 @@ import com.worldcup.service.JwtService;
 import com.worldcup.service.ResultFetchService;
 import com.worldcup.service.ScoringService;
 import com.worldcup.service.Teams;
+import com.worldcup.service.BracketCalculationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,23 +50,29 @@ public class MatchController {
     private final TournamentStateRepository tournamentStateRepository;
     private final JwtService jwtService;
     private final ResultFetchService resultFetchService;
+    private final BracketCalculationService bracketCalculationService;
 
-    /** Nazwa uzytkownika z uprawnieniami admina (konfigurowana przez env APP_ADMIN_USERNAME). */
+    /**
+     * Nazwa uzytkownika z uprawnieniami admina (konfigurowana przez env
+     * APP_ADMIN_USERNAME).
+     */
     @Value("${app.admin.username:admin}")
     private String adminUsername;
 
     public MatchController(MatchRepository matchRepository,
-                           PredictionRepository predictionRepository,
-                           UserRepository userRepository,
-                           TournamentStateRepository tournamentStateRepository,
-                           JwtService jwtService,
-                           ResultFetchService resultFetchService) {
+            PredictionRepository predictionRepository,
+            UserRepository userRepository,
+            TournamentStateRepository tournamentStateRepository,
+            JwtService jwtService,
+            ResultFetchService resultFetchService,
+            BracketCalculationService bracketCalculationService) {
         this.matchRepository = matchRepository;
         this.predictionRepository = predictionRepository;
         this.userRepository = userRepository;
         this.tournamentStateRepository = tournamentStateRepository;
         this.jwtService = jwtService;
         this.resultFetchService = resultFetchService;
+        this.bracketCalculationService = bracketCalculationService;
     }
 
     // ============================================================
@@ -142,7 +149,8 @@ public class MatchController {
 
     /** Ranking wszystkich zarejestrowanych uzytkownikow. */
     @GetMapping("/leaderboard")
-    public List<LeaderboardEntry> getLeaderboard(@RequestHeader(value = "Authorization", required = false) String auth) {
+    public List<LeaderboardEntry> getLeaderboard(
+            @RequestHeader(value = "Authorization", required = false) String auth) {
         requireUser(auth);
 
         List<User> users = userRepository.findAll();
@@ -174,9 +182,12 @@ public class MatchController {
             List<Prediction> userPreds = predsByUser.getOrDefault(user.getUsername().toLowerCase(), List.of());
             for (Prediction p : userPreds) {
                 Match m = matchMap.get(p.getMatchId());
-                if (m == null || "TEST".equals(m.getGroupName())) continue;
-                if (m.getActualScore1() == null || m.getActualScore2() == null) continue;
-                if (p.getScore1() == null || p.getScore2() == null) continue;
+                if (m == null || "TEST".equals(m.getGroupName()))
+                    continue;
+                if (m.getActualScore1() == null || m.getActualScore2() == null)
+                    continue;
+                if (p.getScore1() == null || p.getScore2() == null)
+                    continue;
 
                 if (p.getScore1().equals(m.getActualScore1()) && p.getScore2().equals(m.getActualScore2())) {
                     exact++;
@@ -190,7 +201,8 @@ public class MatchController {
 
                 if (p.getHtScore1() != null && p.getHtScore2() != null &&
                         m.getActualHtScore1() != null && m.getActualHtScore2() != null) {
-                    if (p.getHtScore1().equals(m.getActualHtScore1()) && p.getHtScore2().equals(m.getActualHtScore2())) {
+                    if (p.getHtScore1().equals(m.getActualHtScore1())
+                            && p.getHtScore2().equals(m.getActualHtScore2())) {
                         ht++;
                     }
                 }
@@ -209,7 +221,8 @@ public class MatchController {
 
         entries.sort((a, b) -> {
             int cmp = Integer.compare(b.getPoints(), a.getPoints());
-            if (cmp != 0) return cmp;
+            if (cmp != 0)
+                return cmp;
             return a.getUsername().compareToIgnoreCase(b.getUsername());
         });
 
@@ -277,8 +290,11 @@ public class MatchController {
         java.time.Instant tournamentStart = allMatches.stream()
                 .filter(m -> !"TEST".equals(m.getGroupName()))
                 .map(m -> {
-                    try { return java.time.Instant.parse(m.getKickoffUtc()); }
-                    catch (Exception e) { return java.time.Instant.MAX; }
+                    try {
+                        return java.time.Instant.parse(m.getKickoffUtc());
+                    } catch (Exception e) {
+                        return java.time.Instant.MAX;
+                    }
                 })
                 .min(Comparator.naturalOrder())
                 .orElse(java.time.Instant.MAX);
@@ -313,7 +329,10 @@ public class MatchController {
     // TYP NA MISTRZA TURNIEJU
     // ============================================================
 
-    /** Stan typu na mistrza turnieju (lista druzyn, wlasny typ, blokada, rzeczywisty mistrz). */
+    /**
+     * Stan typu na mistrza turnieju (lista druzyn, wlasny typ, blokada, rzeczywisty
+     * mistrz).
+     */
     @GetMapping("/champion")
     public ChampionView getChampion(@RequestHeader(value = "Authorization", required = false) String auth) {
         String username = requireUser(auth);
@@ -364,7 +383,10 @@ public class MatchController {
     // TYP NA KROLA STRZELCOW
     // ============================================================
 
-    /** Stan typu na krola strzelcow (wlasny typ, blokada, rzeczywisty krol strzelcow). */
+    /**
+     * Stan typu na krola strzelcow (wlasny typ, blokada, rzeczywisty krol
+     * strzelcow).
+     */
     @GetMapping("/topscorer")
     public Map<String, Object> getTopScorer(@RequestHeader(value = "Authorization", required = false) String auth) {
         String username = requireUser(auth);
@@ -374,10 +396,9 @@ public class MatchController {
         TournamentState state = tournamentStateRepository.getOrCreate();
         return Map.of(
                 "pick", user.getTopScorerPick() == null ? "" : user.getTopScorerPick(),
-                "locked", isChampionPickLocked(),   // blokuje sie razem z typowaniem mistrza (start turnieju)
+                "locked", isChampionPickLocked(), // blokuje sie razem z typowaniem mistrza (start turnieju)
                 "actualTopScorer", state.getTopScorerName() == null ? "" : state.getTopScorerName(),
-                "bonusPoints", com.worldcup.service.ScoringService.BONUS_POINTS
-        );
+                "bonusPoints", com.worldcup.service.ScoringService.BONUS_POINTS);
     }
 
     /** Zapis lub wyczyszczenie WLASNEGO typu na krola strzelcow. */
@@ -411,7 +432,9 @@ public class MatchController {
     // ODSWIEZANIE WYNIKOW
     // ============================================================
 
-    /** Recznie wymusza sprawdzenie wynikow zakonczonych meczow i przyznanie punktow. */
+    /**
+     * Recznie wymusza sprawdzenie wynikow zakonczonych meczow i przyznanie punktow.
+     */
     @PostMapping("/results/refresh")
     public ResponseEntity<Void> refreshResults(@RequestHeader(value = "Authorization", required = false) String auth) {
         requireUser(auth);
@@ -444,7 +467,8 @@ public class MatchController {
         requireAdmin(auth);
 
         Match match = matchRepository.findById(id).orElse(null);
-        if (match == null) return ResponseEntity.notFound().build();
+        if (match == null)
+            return ResponseEntity.notFound().build();
 
         // Odejmij stare punkty jesli mecz mial juz wynik
         resultFetchService.retractPointsForMatch(match);
@@ -475,9 +499,10 @@ public class MatchController {
     }
 
     /**
-     * Admin: zaktualizuj nazwy druzyn w meczu pucharowym (gdy sa juz znane po fazie grupowej).
+     * Admin: zaktualizuj nazwy druzyn w meczu pucharowym (gdy sa juz znane po fazie
+     * grupowej).
      * JSON: { "team1Name": "Polska", "team1Code": "pl", "team1En": "Poland",
-     *         "team2Name": "Niemcy", "team2Code": "de", "team2En": "Germany" }
+     * "team2Name": "Niemcy", "team2Code": "de", "team2En": "Germany" }
      */
     @PostMapping("/admin/matches/{id}/teams")
     public ResponseEntity<MatchView> adminSetTeams(
@@ -488,16 +513,25 @@ public class MatchController {
         requireAdmin(auth);
 
         Match match = matchRepository.findById(id).orElse(null);
-        if (match == null) return ResponseEntity.notFound().build();
+        if (match == null)
+            return ResponseEntity.notFound().build();
 
-        if (body.containsKey("team1Name")) match.setTeam1Name(body.get("team1Name"));
-        if (body.containsKey("team1Code")) match.setTeam1Code(body.get("team1Code"));
-        if (body.containsKey("team1En"))   match.setTeam1En(body.get("team1En"));
-        if (body.containsKey("team2Name")) match.setTeam2Name(body.get("team2Name"));
-        if (body.containsKey("team2Code")) match.setTeam2Code(body.get("team2Code"));
-        if (body.containsKey("team2En"))   match.setTeam2En(body.get("team2En"));
-        if (body.containsKey("date"))      match.setDate(body.get("date"));
-        if (body.containsKey("kickoffUtc")) match.setKickoffUtc(body.get("kickoffUtc"));
+        if (body.containsKey("team1Name"))
+            match.setTeam1Name(body.get("team1Name"));
+        if (body.containsKey("team1Code"))
+            match.setTeam1Code(body.get("team1Code"));
+        if (body.containsKey("team1En"))
+            match.setTeam1En(body.get("team1En"));
+        if (body.containsKey("team2Name"))
+            match.setTeam2Name(body.get("team2Name"));
+        if (body.containsKey("team2Code"))
+            match.setTeam2Code(body.get("team2Code"));
+        if (body.containsKey("team2En"))
+            match.setTeam2En(body.get("team2En"));
+        if (body.containsKey("date"))
+            match.setDate(body.get("date"));
+        if (body.containsKey("kickoffUtc"))
+            match.setKickoffUtc(body.get("kickoffUtc"));
 
         matchRepository.save(match);
         return ResponseEntity.ok(new MatchView(match, null));
@@ -515,7 +549,8 @@ public class MatchController {
         requireAdmin(auth);
 
         String name = body.getOrDefault("name", "").trim();
-        if (name.isEmpty()) return ResponseEntity.badRequest().build();
+        if (name.isEmpty())
+            return ResponseEntity.badRequest().build();
 
         TournamentState state = tournamentStateRepository.getOrCreate();
 
@@ -555,6 +590,17 @@ public class MatchController {
         requireAdmin(auth);
         resultFetchService.recalculateAllPoints();
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Admin: wygeneruj drabinke pucharowa (R32) na podstawie statycznego mapowania topologicznego.
+     */
+    @PostMapping("/admin/bracket/generate")
+    public ResponseEntity<Map<String, String>> generateBracket(
+            @RequestHeader(value = "Authorization", required = false) String auth) {
+        requireAdmin(auth);
+        bracketCalculationService.generateR32Bracket();
+        return ResponseEntity.ok(Map.of("message", "Drabinka R32 wygenerowana z mapy statycznej (numery meczow 73-88)."));
     }
 
     // ============================================================

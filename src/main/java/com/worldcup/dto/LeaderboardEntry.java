@@ -1,7 +1,5 @@
 package com.worldcup.dto;
 
-import com.worldcup.model.User;
-
 public class LeaderboardEntry {
 
     private String username;

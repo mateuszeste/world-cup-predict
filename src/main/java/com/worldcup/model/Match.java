@@ -21,6 +21,9 @@ public class Match {
     private String phase;       // "GROUP" | "KNOCKOUT"
     private String date;        // data "dnia meczowego" ISO, np. "2026-06-11"
     private String kickoffUtc;  // dokladny moment startu UTC, np. "2026-06-11T19:00:00Z"
+    
+    @jakarta.persistence.Column(name = "match_number")
+    private Integer matchNumber; // Oficjalny numer meczu FIFA (np. 73-104 dla fazy pucharowej)
 
     private String team1Name;
     private String team1Code;   // kod ISO do flagi, np. "pl" (lub "xx" gdy TBD)
@@ -69,6 +72,9 @@ public class Match {
 
     public String getKickoffUtc() { return kickoffUtc; }
     public void setKickoffUtc(String kickoffUtc) { this.kickoffUtc = kickoffUtc; }
+
+    public Integer getMatchNumber() { return matchNumber; }
+    public void setMatchNumber(Integer matchNumber) { this.matchNumber = matchNumber; }
 
     public String getTeam1Name() { return team1Name; }
     public void setTeam1Name(String team1Name) { this.team1Name = team1Name; }

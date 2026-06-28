@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -29,6 +30,24 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // MIGRATION: Backfill matchNumber for existing KNOCKOUT matches if missing
+        List<Match> existingKnockouts = repository.findAllByPhase("KNOCKOUT");
+        boolean needsMigration = existingKnockouts.stream().anyMatch(m -> m.getMatchNumber() == null);
+        if (needsMigration) {
+            // Note: This migration assigns matchNumber to existing R32-F matches, but intentionally 
+            // does NOT backfill their kickoffUtc/date to the new correct schedule (June 28+). 
+            // Existing deployments will retain their old seeded dates (July 1+). 
+            // The tournament is live, so admin should manually correct these via POST /api/admin/matches/{id}/teams if needed.
+            List<Match> sortedKOs = existingKnockouts.stream()
+                    .sorted(Comparator.comparing(Match::getId))
+                    .toList();
+            int mn = 73;
+            for (Match m : sortedKOs) {
+                m.setMatchNumber(mn++);
+            }
+            repository.saveAll(sortedKOs);
+        }
+
         if (repository.count() >= EXPECTED_MATCH_COUNT) {
             return; // baza juz w pelni wypelniona
         }
@@ -158,52 +177,49 @@ public class DataSeeder implements CommandLineRunner {
     //  FAZA PUCHAROWA (32 mecze) – druzyny TBD
     // ============================================================
     private void addKnockoutStage(List<Match> m) {
-        // Przyblizone godziny start UTC; admin uzupelni nazwy druzyn po fazie grupowej.
-        // Daty wg oficjalnego harmonogramu FIFA (kolejnosc meczow symboliczna).
+        // ---- 1/32 (Round of 32) – 16 meczow, 28 June - 4 July 2026 ----
+        addKO(m, "R32", "2026-06-28", "2026-06-28T19:00:00Z", 73);
+        addKO(m, "R32", "2026-06-29", "2026-06-29T17:00:00Z", 74);
+        addKO(m, "R32", "2026-06-29", "2026-06-29T20:30:00Z", 75);
+        addKO(m, "R32", "2026-06-30", "2026-06-30T01:00:00Z", 76);
+        addKO(m, "R32", "2026-06-30", "2026-06-30T17:00:00Z", 77);
+        addKO(m, "R32", "2026-06-30", "2026-06-30T21:00:00Z", 78);
+        addKO(m, "R32", "2026-07-01", "2026-07-01T01:00:00Z", 79);
+        addKO(m, "R32", "2026-07-01", "2026-07-01T16:00:00Z", 80);
+        addKO(m, "R32", "2026-07-01", "2026-07-01T20:00:00Z", 81);
+        addKO(m, "R32", "2026-07-02", "2026-07-02T00:00:00Z", 82);
+        addKO(m, "R32", "2026-07-02", "2026-07-02T19:00:00Z", 83);
+        addKO(m, "R32", "2026-07-02", "2026-07-02T23:00:00Z", 84);
+        addKO(m, "R32", "2026-07-03", "2026-07-03T03:00:00Z", 85);
+        addKO(m, "R32", "2026-07-03", "2026-07-03T18:00:00Z", 86);
+        addKO(m, "R32", "2026-07-03", "2026-07-03T22:00:00Z", 87);
+        addKO(m, "R32", "2026-07-04", "2026-07-04T01:30:00Z", 88);
 
-        // ---- 1/32 (Round of 32) – 16 meczow, 1–5 lipca 2026 ----
-        addKO(m, "R32", "2026-07-01", "2026-07-01T22:00:00Z");
-        addKO(m, "R32", "2026-07-01", "2026-07-02T01:00:00Z");
-        addKO(m, "R32", "2026-07-02", "2026-07-02T22:00:00Z");
-        addKO(m, "R32", "2026-07-02", "2026-07-03T01:00:00Z");
-        addKO(m, "R32", "2026-07-03", "2026-07-03T22:00:00Z");
-        addKO(m, "R32", "2026-07-03", "2026-07-04T01:00:00Z");
-        addKO(m, "R32", "2026-07-04", "2026-07-04T20:00:00Z");
-        addKO(m, "R32", "2026-07-04", "2026-07-04T23:00:00Z");
-        addKO(m, "R32", "2026-07-05", "2026-07-05T00:00:00Z");
-        addKO(m, "R32", "2026-07-05", "2026-07-05T03:00:00Z");
-        addKO(m, "R32", "2026-07-05", "2026-07-05T22:00:00Z");
-        addKO(m, "R32", "2026-07-05", "2026-07-06T01:00:00Z");
-        addKO(m, "R32", "2026-07-06", "2026-07-06T22:00:00Z");
-        addKO(m, "R32", "2026-07-06", "2026-07-07T01:00:00Z");
-        addKO(m, "R32", "2026-07-07", "2026-07-07T22:00:00Z");
-        addKO(m, "R32", "2026-07-07", "2026-07-08T01:00:00Z");
+        // ---- 1/16 (Round of 16) – 8 meczow, 4 - 7 July 2026 ----
+        addKO(m, "R16", "2026-07-04", "2026-07-04T22:00:00Z", 89);
+        addKO(m, "R16", "2026-07-05", "2026-07-05T01:00:00Z", 90);
+        addKO(m, "R16", "2026-07-05", "2026-07-05T22:00:00Z", 91);
+        addKO(m, "R16", "2026-07-06", "2026-07-06T01:00:00Z", 92);
+        addKO(m, "R16", "2026-07-06", "2026-07-06T22:00:00Z", 93);
+        addKO(m, "R16", "2026-07-07", "2026-07-07T01:00:00Z", 94);
+        addKO(m, "R16", "2026-07-07", "2026-07-07T22:00:00Z", 95);
+        addKO(m, "R16", "2026-07-08", "2026-07-08T01:00:00Z", 96);
 
-        // ---- 1/16 (Round of 16) – 8 meczow, 9–12 lipca 2026 ----
-        addKO(m, "R16", "2026-07-09", "2026-07-09T22:00:00Z");
-        addKO(m, "R16", "2026-07-10", "2026-07-10T01:00:00Z");
-        addKO(m, "R16", "2026-07-10", "2026-07-10T22:00:00Z");
-        addKO(m, "R16", "2026-07-11", "2026-07-11T01:00:00Z");
-        addKO(m, "R16", "2026-07-11", "2026-07-11T22:00:00Z");
-        addKO(m, "R16", "2026-07-12", "2026-07-12T01:00:00Z");
-        addKO(m, "R16", "2026-07-12", "2026-07-12T22:00:00Z");
-        addKO(m, "R16", "2026-07-13", "2026-07-13T01:00:00Z");
+        // ---- Cwiercfinaly (QF) – 4 mecze, 9-11 July 2026 ----
+        addKO(m, "QF", "2026-07-09", "2026-07-09T22:00:00Z", 97);
+        addKO(m, "QF", "2026-07-10", "2026-07-10T01:00:00Z", 98);
+        addKO(m, "QF", "2026-07-10", "2026-07-10T22:00:00Z", 99);
+        addKO(m, "QF", "2026-07-11", "2026-07-11T01:00:00Z", 100);
 
-        // ---- Cwiercfinaly (QF) – 4 mecze, 14–15 lipca 2026 ----
-        addKO(m, "QF", "2026-07-14", "2026-07-14T22:00:00Z");
-        addKO(m, "QF", "2026-07-15", "2026-07-15T01:00:00Z");
-        addKO(m, "QF", "2026-07-15", "2026-07-15T22:00:00Z");
-        addKO(m, "QF", "2026-07-16", "2026-07-16T01:00:00Z");
-
-        // ---- Polfinal (SF) – 2 mecze, 17 i 18 lipca 2026 ----
-        addKO(m, "SF", "2026-07-17", "2026-07-17T22:00:00Z");
-        addKO(m, "SF", "2026-07-18", "2026-07-18T22:00:00Z");
+        // ---- Polfinal (SF) – 2 mecze, 14-15 July 2026 ----
+        addKO(m, "SF", "2026-07-14", "2026-07-14T22:00:00Z", 101);
+        addKO(m, "SF", "2026-07-15", "2026-07-15T22:00:00Z", 102);
 
         // ---- Mecz o 3. miejsce ----
-        addKO(m, "3P", "2026-07-18", "2026-07-19T00:30:00Z");
+        addKO(m, "3P", "2026-07-18", "2026-07-19T00:30:00Z", 103);
 
         // ---- Final ----
-        addKO(m, "F",  "2026-07-19", "2026-07-19T22:00:00Z");
+        addKO(m, "F",  "2026-07-19", "2026-07-19T22:00:00Z", 104);
     }
 
     // ============================================================
@@ -234,10 +250,12 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     /** Mecz pucharowy z TBD druzyny. Kickoff podany w UTC. */
-    private void addKO(List<Match> list, String stage, String date, String kickoffUtc) {
-        list.add(new Match(stage, "KNOCKOUT", date, kickoffUtc,
+    private void addKO(List<Match> list, String stage, String date, String kickoffUtc, Integer matchNumber) {
+        Match match = new Match(stage, "KNOCKOUT", date, kickoffUtc,
                 "TBD", "xx", "",
-                "TBD", "xx", ""));
+                "TBD", "xx", "");
+        match.setMatchNumber(matchNumber);
+        list.add(match);
     }
 
     private String code(String team) {
