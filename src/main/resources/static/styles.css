@@ -1132,3 +1132,29 @@ footer a {
     width: 24px;
     height: 16px;
 }
+
+/* Faza Grupowa Collapsible */
+.group-phase-details summary {
+  cursor: pointer;
+  list-style: none;
+}
+.group-phase-details summary::-webkit-details-marker {
+  display: none;
+}
+.group-phase-details summary h2 {
+  display: inline-block;
+}
+.group-phase-details summary:hover h2 {
+  color: var(--primary-light);
+}
+.group-phase-details summary::before {
+  content: "► ";
+  font-size: 1.2rem;
+  color: var(--primary-main);
+  margin-right: 8px;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.group-phase-details[open] summary::before {
+  transform: rotate(90deg);
+}

@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ResultFetchServiceTest {
 
-    private final ResultFetchService service = new ResultFetchService(null, null, null, null, null);
+    private final ResultFetchService service = new ResultFetchService(null, null, null, null, null, null);
 
     @Test
     void isFinished_NormalizesAndMatchesCorrectly() {

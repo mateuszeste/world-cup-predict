@@ -437,7 +437,7 @@ public class MatchController {
      */
     @PostMapping("/results/refresh")
     public ResponseEntity<Void> refreshResults(@RequestHeader(value = "Authorization", required = false) String auth) {
-        requireUser(auth);
+        requireAdmin(auth);
         resultFetchService.refresh();
         return ResponseEntity.noContent().build();
     }
@@ -491,9 +491,8 @@ public class MatchController {
 
         match.setPointsAwarded(false);
         matchRepository.save(match);
-
-        // Natychmiastowe przyznanie nowych punktow
         resultFetchService.awardPendingPoints();
+        bracketCalculationService.advanceTournamentBracket();
 
         return ResponseEntity.ok(new MatchView(match, null));
     }

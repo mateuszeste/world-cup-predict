@@ -305,11 +305,13 @@ function PredictionsTab() {
 
             {filter === "matches" && (
                 <div className="predictions-matches">
-                    <h2>Faza grupowa</h2>
-                    {groupMatches.length === 0 && <p className="no-data">Brak typów na mecze grupowe.</p>}
-                    {groupMatches.map((m) => (
-                        <PredictionMatchCard key={m.matchId} match={m} />
-                    ))}
+                    <details className="group-phase-details">
+                        <summary><h2>Faza grupowa</h2></summary>
+                        {groupMatches.length === 0 && <p className="no-data">Brak typów na mecze grupowe.</p>}
+                        {groupMatches.map((m) => (
+                            <PredictionMatchCard key={m.matchId} match={m} />
+                        ))}
+                    </details>
                     <h2>Faza pucharowa</h2>
                     {knockoutMatches.length === 0 && <p className="no-data">Brak typów na mecze pucharowe.</p>}
                     {knockoutMatches.map((m) => (

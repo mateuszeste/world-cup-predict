@@ -51,18 +51,21 @@ public class ResultFetchService {
     private final TournamentStateRepository tournamentStateRepository;
     private final RestClient restClient;
     private final ApiFootballClient apiFootballClient;
+    private final BracketCalculationService bracketCalculationService;
 
     public ResultFetchService(MatchRepository matchRepository,
                                PredictionRepository predictionRepository,
                                UserRepository userRepository,
                                TournamentStateRepository tournamentStateRepository,
-                               ApiFootballClient apiFootballClient) {
+                               ApiFootballClient apiFootballClient,
+                               BracketCalculationService bracketCalculationService) {
         this.matchRepository = matchRepository;
         this.predictionRepository = predictionRepository;
         this.userRepository = userRepository;
         this.tournamentStateRepository = tournamentStateRepository;
         this.restClient = RestClient.create(API_BASE);
         this.apiFootballClient = apiFootballClient;
+        this.bracketCalculationService = bracketCalculationService;
     }
 
     /** Co 5 minut: pobiera wyniki zakonczonych meczow, przyznaje punkty i sprawdza mistrza. */
@@ -70,6 +73,7 @@ public class ResultFetchService {
     public void refresh() {
         fetchMissingResults();
         awardPendingPoints();
+        bracketCalculationService.advanceTournamentBracket();
         fetchAndAwardChampion();
     }
 

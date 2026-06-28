@@ -9,10 +9,53 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 public class BracketCalculationService {
+
+    public record NextMatchPointer(int nextMatchNumber, boolean isTeam1) {}
+
+    // ponytail: Uproszczony graf binarny (do podmiany na docelowy graf FIFA jak juz wystartuje R32)
+    private static final Map<Integer, NextMatchPointer> PROGRESSION_MAP = Map.ofEntries(
+        Map.entry(73, new NextMatchPointer(89, true)),
+        Map.entry(74, new NextMatchPointer(89, false)),
+        Map.entry(75, new NextMatchPointer(90, true)),
+        Map.entry(76, new NextMatchPointer(90, false)),
+        Map.entry(77, new NextMatchPointer(91, true)),
+        Map.entry(78, new NextMatchPointer(91, false)),
+        Map.entry(79, new NextMatchPointer(92, true)),
+        Map.entry(80, new NextMatchPointer(92, false)),
+        Map.entry(81, new NextMatchPointer(93, true)),
+        Map.entry(82, new NextMatchPointer(93, false)),
+        Map.entry(83, new NextMatchPointer(94, true)),
+        Map.entry(84, new NextMatchPointer(94, false)),
+        Map.entry(85, new NextMatchPointer(95, true)),
+        Map.entry(86, new NextMatchPointer(95, false)),
+        Map.entry(87, new NextMatchPointer(96, true)),
+        Map.entry(88, new NextMatchPointer(96, false)),
+        Map.entry(89, new NextMatchPointer(97, true)),
+        Map.entry(90, new NextMatchPointer(97, false)),
+        Map.entry(91, new NextMatchPointer(98, true)),
+        Map.entry(92, new NextMatchPointer(98, false)),
+        Map.entry(93, new NextMatchPointer(99, true)),
+        Map.entry(94, new NextMatchPointer(99, false)),
+        Map.entry(95, new NextMatchPointer(100, true)),
+        Map.entry(96, new NextMatchPointer(100, false)),
+        Map.entry(97, new NextMatchPointer(101, true)),
+        Map.entry(98, new NextMatchPointer(101, false)),
+        Map.entry(99, new NextMatchPointer(102, true)),
+        Map.entry(100, new NextMatchPointer(102, false)),
+        Map.entry(101, new NextMatchPointer(104, true)), // Zwyciezca SF1 do Finalu
+        Map.entry(102, new NextMatchPointer(104, false)) // Zwyciezca SF2 do Finalu
+    );
+
+    // Mapowanie dla przegranych (tylko polfinaly -> mecz o 3. miejsce)
+    private static final Map<Integer, NextMatchPointer> LOSER_PROGRESSION_MAP = Map.ofEntries(
+        Map.entry(101, new NextMatchPointer(103, true)),  // Przegrany SF1 do 3P
+        Map.entry(102, new NextMatchPointer(103, false))  // Przegrany SF2 do 3P
+    );
 
     private static final Logger log = LoggerFactory.getLogger(BracketCalculationService.class);
 
@@ -82,5 +125,94 @@ public class BracketCalculationService {
         }
 
         log.info("Knockout Bracket generation complete. Zaktualizowano wszystkie 16 meczow R32 ze stala topologia.");
+    }
+
+    @Transactional
+    public void advanceTournamentBracket() {
+        log.info("Checking completed knockout matches for bracket progression...");
+        List<Match> allKnockouts = matchRepository.findAllByPhase("KNOCKOUT");
+        
+        Map<Integer, Match> byNumber = allKnockouts.stream()
+                .filter(nm -> nm.getMatchNumber() != null)
+                .collect(Collectors.toMap(Match::getMatchNumber, Function.identity()));
+        
+        for (Match m : allKnockouts) {
+            // Mecz musi byc zakonczony (mamy wpisany wynik FT)
+            if (m.getActualScore1() == null) {
+                continue;
+            }
+            
+            // --- Awanse zwyciezcow ---
+            NextMatchPointer pointer = PROGRESSION_MAP.get(m.getMatchNumber());
+            if (pointer != null) {
+                String winnerName = getWinnerName(m);
+                if (winnerName != null && !"TBD".equals(winnerName)) {
+                    Match nextMatch = byNumber.get(pointer.nextMatchNumber());
+                    if (nextMatch != null) {
+                        updateMatchTeam(nextMatch, winnerName, pointer.isTeam1(), m.getMatchNumber());
+                    }
+                }
+            }
+            
+            // --- Awanse przegranych (mecz o 3. miejsce) ---
+            NextMatchPointer loserPointer = LOSER_PROGRESSION_MAP.get(m.getMatchNumber());
+            if (loserPointer != null) {
+                String loserName = getLoserName(m);
+                if (loserName != null && !"TBD".equals(loserName)) {
+                    Match nextMatch = byNumber.get(loserPointer.nextMatchNumber());
+                    if (nextMatch != null) {
+                        updateMatchTeam(nextMatch, loserName, loserPointer.isTeam1(), m.getMatchNumber());
+                    }
+                }
+            }
+        }
+    }
+    
+    private void updateMatchTeam(Match nextMatch, String teamName, boolean isTeam1, int fromMatchNumber) {
+        String code = Teams.CODES.get(teamName);
+        String enName = Teams.EN_NAMES.get(teamName);
+        
+        if (code == null) {
+            log.warn("Unknown team '{}' - skipping bracket advancement for match {}", teamName, fromMatchNumber);
+            return;
+        }
+
+        boolean changed = false;
+        if (isTeam1 && !teamName.equals(nextMatch.getTeam1Name())) {
+            nextMatch.setTeam1Name(teamName);
+            nextMatch.setTeam1Code(code);
+            nextMatch.setTeam1En(enName);
+            changed = true;
+        } else if (!isTeam1 && !teamName.equals(nextMatch.getTeam2Name())) {
+            nextMatch.setTeam2Name(teamName);
+            nextMatch.setTeam2Code(code);
+            nextMatch.setTeam2En(enName);
+            changed = true;
+        }
+        
+        if (changed) {
+            log.info("Advanced {} from Match {} to Match {}", teamName, fromMatchNumber, nextMatch.getMatchNumber());
+            matchRepository.save(nextMatch);
+        }
+    }
+    
+    private String getWinnerName(Match m) {
+        if (m.getActualScore1() == null || m.getActualScore2() == null) return null;
+        
+        if (m.getActualScore1() > m.getActualScore2()) return m.getTeam1Name();
+        if (m.getActualScore2() > m.getActualScore1()) return m.getTeam2Name();
+        
+        // ponytail: W przypadku remisu (rzuty karne) encja Match nie sledzi karnych.
+        // Taki mecz wymaga recznego klikniecia w adminie zeby przepchnac zwyciezce.
+        return null;
+    }
+    
+    private String getLoserName(Match m) {
+        if (m.getActualScore1() == null || m.getActualScore2() == null) return null;
+        
+        if (m.getActualScore1() < m.getActualScore2()) return m.getTeam1Name();
+        if (m.getActualScore2() < m.getActualScore1()) return m.getTeam2Name();
+        
+        return null;
     }
 }
