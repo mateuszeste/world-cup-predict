@@ -9,8 +9,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Wypelnia baze prawdziwymi meczami MS 2026 – faza grupowa + faza pucharowa.
@@ -20,6 +23,7 @@ import java.util.List;
 @Component
 public class DataSeeder implements CommandLineRunner {
 
+    private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
     private static final int EXPECTED_MATCH_COUNT = 72 + 1 + 32; // 72 grupowe + 1 testowy + 32 pucharowe = 105
 
     private final MatchRepository repository;
@@ -29,43 +33,93 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     @Override
+    @Transactional
     public void run(String... args) {
         // MIGRATION: Backfill matchNumber for existing KNOCKOUT matches if missing
         List<Match> existingKnockouts = repository.findAllByPhase("KNOCKOUT");
-        boolean needsMigration = existingKnockouts.stream().anyMatch(m -> m.getMatchNumber() == null);
+        boolean needsMigration = existingKnockouts.stream().anyMatch(match -> match.getMatchNumber() == null);
         if (needsMigration) {
-            // Note: This migration assigns matchNumber to existing R32-F matches, but intentionally 
-            // does NOT backfill their kickoffUtc/date to the new correct schedule (June 28+). 
-            // Existing deployments will retain their old seeded dates (July 1+). 
-            // The tournament is live, so admin should manually correct these via POST /api/admin/matches/{id}/teams if needed.
             List<Match> sortedKOs = existingKnockouts.stream()
-                    .sorted(Comparator.comparing(Match::getId))
+                    .sorted(java.util.Comparator.comparing(Match::getId))
                     .toList();
             int mn = 73;
-            for (Match m : sortedKOs) {
-                m.setMatchNumber(mn++);
+            for (Match match : sortedKOs) {
+                match.setMatchNumber(mn++);
             }
             repository.saveAll(sortedKOs);
+            log.info("Migracja matchNumber: zaktualizowano {} meczów pucharowych.", sortedKOs.size());
         }
-
-        if (repository.count() >= EXPECTED_MATCH_COUNT) {
-            return; // baza juz w pelni wypelniona
-        }
-
-        // Jesli baza jest czesciowo wypelniona (np. wersja bez fazy pucharowej), doczytaj reszte
-        boolean needsGroup    = repository.count() == 0;
-        boolean needsKnockout = repository.findAllByPhase("KNOCKOUT").isEmpty();
 
         List<Match> m = new ArrayList<>();
 
-        if (needsGroup) {
-            addGroupStage(m);
-        }
-        if (needsKnockout) {
-            addKnockoutStage(m);
+        addGroupStage(m);
+        addKnockoutStage(m);
+
+        if (m.size() != EXPECTED_MATCH_COUNT) {
+            log.error("DataSeeder: oczekiwano {} meczów, wygenerowano {}.", EXPECTED_MATCH_COUNT, m.size());
         }
 
-        repository.saveAll(m);
+        // SYNC WITH DATABASE
+        List<Match> existingMatches = repository.findAll();
+        if (existingMatches.isEmpty()) {
+            repository.saveAll(m);
+        } else {
+            // Update existing matches to ensure kickoff times are perfectly synced
+            List<Match> changed = new ArrayList<>();
+            for (Match dbMatch : existingMatches) {
+                Match expected = findExpected(m, dbMatch);
+                if (expected != null) {
+                    boolean changedThis = false;
+                    if (dbMatch.getMatchNumber() == null && expected.getMatchNumber() != null) {
+                        dbMatch.setMatchNumber(expected.getMatchNumber());
+                        changedThis = true;
+                    }
+                    if (!expected.getKickoffUtc().equals(dbMatch.getKickoffUtc()) ||
+                        !expected.getDate().equals(dbMatch.getDate())) {
+                        
+                        log.info("Force Sync: aktualizacja meczu #{} ({} vs {}): kickoff {} -> {}, date {} -> {}",
+                            dbMatch.getId(), dbMatch.getTeam1Name(), dbMatch.getTeam2Name(),
+                            dbMatch.getKickoffUtc(), expected.getKickoffUtc(),
+                            dbMatch.getDate(), expected.getDate());
+                            
+                        dbMatch.setKickoffUtc(expected.getKickoffUtc());
+                        dbMatch.setDate(expected.getDate());
+                        changedThis = true;
+                    }
+                    if (changedThis) {
+                        changed.add(dbMatch);
+                    }
+                }
+            }
+            if (!changed.isEmpty()) {
+                repository.saveAll(changed);
+            }
+            
+            // Jesli brakuje meczow pucharowych, dorzuc je
+            long knockoutCount = existingMatches.stream().filter(match -> "KNOCKOUT".equals(match.getPhase())).count();
+            if (knockoutCount == 0) {
+                List<Match> toAdd = m.stream().filter(match -> "KNOCKOUT".equals(match.getPhase())).toList();
+                repository.saveAll(toAdd);
+            }
+        }
+    }
+
+    private Match findExpected(List<Match> expectedList, Match dbMatch) {
+        if ("KNOCKOUT".equals(dbMatch.getPhase())) {
+            // Identyfikacja po id w przypadku braku matchNumber, albo po matchNumber
+            if (dbMatch.getMatchNumber() != null) {
+                return expectedList.stream().filter(e -> dbMatch.getMatchNumber().equals(e.getMatchNumber())).findFirst().orElse(null);
+            } else {
+                // Heurystyka dla bardzo starych wdrozen: sortujemy wg id
+                return null; // zostalo obsluzone we wczesniejszych migracjach
+            }
+        } else {
+            return expectedList.stream()
+                .filter(e -> e.getTeam1Name().equals(dbMatch.getTeam1Name()) 
+                          && e.getTeam2Name().equals(dbMatch.getTeam2Name())
+                          && Objects.equals(e.getGroupName(), dbMatch.getGroupName()))
+                .findFirst().orElse(null);
+        }
     }
 
     // ============================================================
@@ -252,8 +306,8 @@ public class DataSeeder implements CommandLineRunner {
     /** Mecz pucharowy z TBD druzyny. Kickoff podany w UTC. */
     private void addKO(List<Match> list, String stage, String date, String kickoffUtc, Integer matchNumber) {
         Match match = new Match(stage, "KNOCKOUT", date, kickoffUtc,
-                "TBD", "xx", "",
-                "TBD", "xx", "");
+                "TBD", null, "",
+                "TBD", null, "");
         match.setMatchNumber(matchNumber);
         list.add(match);
     }
