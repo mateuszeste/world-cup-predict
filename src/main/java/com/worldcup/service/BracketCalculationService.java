@@ -128,6 +128,7 @@ public class BracketCalculationService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public void advanceTournamentBracket() {
         log.info("Checking completed knockout matches for bracket progression...");
         List<Match> allKnockouts = matchRepository.findAllByPhase("KNOCKOUT");

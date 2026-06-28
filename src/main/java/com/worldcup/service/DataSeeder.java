@@ -34,6 +34,7 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public void run(String... args) {
         // MIGRATION: Backfill matchNumber for existing KNOCKOUT matches if missing
         List<Match> existingKnockouts = repository.findAllByPhase("KNOCKOUT");

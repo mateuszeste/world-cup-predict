@@ -885,7 +885,7 @@ footer a {
     color: var(--gold);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
-    min-width: 54px;
+    min-width: 140px;
 }
 
 .admin-teams {

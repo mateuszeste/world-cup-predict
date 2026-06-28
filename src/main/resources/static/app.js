@@ -32,6 +32,7 @@ function formatDate(iso) {
 }
 
 function kickoffInfo(iso, slateDate) {
+    if (!iso) return { pl: "—", et: "—", nextDay: null, plDate: "??.??" };
     const dt = new Date(iso);
     const pl = new Intl.DateTimeFormat("pl-PL",
         { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Warsaw" }).format(dt);
@@ -39,12 +40,13 @@ function kickoffInfo(iso, slateDate) {
         { hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" }).format(dt);
     const plIso = new Intl.DateTimeFormat("en-CA",
         { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Europe/Warsaw" }).format(dt);
+    const [, mm, dd] = plIso.split("-");
+    const plDate = `${dd}.${mm}`;
     let nextDay = null;
     if (plIso !== slateDate) {
-        const [, mm, dd] = plIso.split("-");
-        nextDay = `${dd}.${mm}`;
+        nextDay = plDate;
     }
-    return { pl, et, nextDay };
+    return { pl, et, nextDay, plDate };
 }
 
 function isLive(match) {
@@ -136,7 +138,7 @@ function MatchRow({ match, onSaved, showGroup = true }) {
     return (
         <div className={"match-row" + (match.played ? " played" : "") + (locked ? " locked" : "")}>
             <div className="match-group">
-                <span className="kick">🕑 {t.pl} PL {t.et} ET{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                <span className="kick">🕑 {match.phase === "KNOCKOUT" ? `${t.plDate} ` : ""}{t.pl} PL {t.et} ET{match.phase !== "KNOCKOUT" && t.nextDay ? ` (${t.nextDay})` : ""}</span>
                 {isLive(match) && (
                     <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
@@ -368,7 +370,7 @@ function PredictionMatchCard({ match }) {
         <div className={"prediction-match-card" + (locked ? " locked" : "")}>
             <div className="pred-match-header">
                 <span className="pred-stage">{stageLabel}</span>
-                <span className="pred-kickoff">🕑 {t.pl} PL {t.et} ET{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                <span className="pred-kickoff">🕑 {t.plDate} {t.pl} PL {t.et} ET{t.nextDay ? " (kolejny dzień)" : ""}</span>
                 {isLive(match) && (
                     <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
@@ -634,7 +636,7 @@ function AdminMatchRow({ match, isExpanded, isEditingTeams, onToggle, onToggleTe
         <div className="admin-match-row">
             <div className="admin-match-header" onClick={onToggle}>
                 <span className="admin-stage">{stageLabel}</span>
-                <span className="admin-kickoff">{t.pl} PL {t.et} ET{t.nextDay ? ` (${t.nextDay})` : ""}</span>
+                <span className="admin-kickoff">🕑 {t.plDate} {t.pl} PL {t.et} ET</span>
                 {isLive(match) && (
                     <span className="live-badge"><span className="live-ball">⚽</span>LIVE</span>
                 )}
