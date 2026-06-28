@@ -703,6 +703,7 @@ function AdminPanel({ matches, onSaved }) {
     const [savingTs, setSavingTs] = useState(false);
     const [tsSaved, setTsSaved] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [generatingBracket, setGeneratingBracket] = useState(false);
     const [expanded, setExpanded] = useState(null);
     const [editTeams, setEditTeams] = useState(null);
 
@@ -734,6 +735,20 @@ function AdminPanel({ matches, onSaved }) {
         onSaved();
     }
 
+    async function generateBracket() {
+        if (!window.confirm("Wygenerować drabinkę pucharową R32? Ta operacja zaktualizuje zespoły w fazie 1/16 finału.")) return;
+        setGeneratingBracket(true);
+        try {
+            await api(`${API}/admin/bracket/generate`, { method: "POST" });
+            alert("Drabinka R32 wygenerowana poprawnie!");
+            onSaved();
+        } catch (e) {
+            alert("Błąd generowania drabinki: " + e.message);
+        } finally {
+            setGeneratingBracket(false);
+        }
+    }
+
     const adminMatches = useMemo(() => {
         const now = new Date();
         return matches
@@ -759,6 +774,18 @@ function AdminPanel({ matches, onSaved }) {
                     </button>
                     <span style={{marginLeft:"10px", fontSize:"13px", color:"var(--muted)"}}>
                         Naprawia rozbieżności między zakładkami.
+                    </span>
+                </div>
+            </div>
+
+            <div className="admin-section">
+                <h3>🏆 Generowanie Drabinki</h3>
+                <div style={{padding:"12px 18px"}}>
+                    <button className="btn btn-save" disabled={generatingBracket} onClick={generateBracket}>
+                        {generatingBracket ? "Generowanie…" : "⚽ Wygeneruj drabinkę R32"}
+                    </button>
+                    <span style={{marginLeft:"10px", fontSize:"13px", color:"var(--muted)"}}>
+                        Uzupełnia pary fazy pucharowej wg topologii.
                     </span>
                 </div>
             </div>
