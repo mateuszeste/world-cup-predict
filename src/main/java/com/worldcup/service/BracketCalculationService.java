@@ -73,9 +73,9 @@ public class BracketCalculationService {
         // Topological order according to the official FIFA bracket for 2026
         Map<Integer, String[]> r32Mappings = Map.ofEntries(
             Map.entry(73, new String[]{"RPA", "Kanada"}),
-            Map.entry(74, new String[]{"Niemcy", "Paragwaj"}),
-            Map.entry(75, new String[]{"Holandia", "Maroko"}),
-            Map.entry(76, new String[]{"Brazylia", "Japonia"}),
+            Map.entry(74, new String[]{"Brazylia", "Japonia"}),
+            Map.entry(75, new String[]{"Niemcy", "Paragwaj"}),
+            Map.entry(76, new String[]{"Holandia", "Maroko"}),
             Map.entry(77, new String[]{"Wybrzeze Kosci Sloniowej", "Norwegia"}),
             Map.entry(78, new String[]{"Francja", "Szwecja"}),
             Map.entry(79, new String[]{"Meksyk", "Ekwador"}),

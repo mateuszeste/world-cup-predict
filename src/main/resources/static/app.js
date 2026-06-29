@@ -69,7 +69,7 @@ function Flag({ code, name }) {
 }
 
 const STAGE_LABELS = {
-    R32: "1/32 finału", R16: "1/16 finału", QF: "Ćwierćfinały",
+    R32: "1/16 finału", R16: "1/8 finału", QF: "Ćwierćfinały",
     SF: "Półfinały", "3P": "Mecz o 3. miejsce", F: "Finał"
 };
 const STAGE_ORDER = ["R32", "R16", "QF", "SF", "3P", "F"];
